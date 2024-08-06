@@ -1,0 +1,10 @@
+__pycache__
+venv
+.venv
+.eggs
+*egg-info*
+*.sw*
+build/
+dist/
+*.dts
+*.repl
