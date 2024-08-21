@@ -19,32 +19,37 @@ logger = logging.getLogger("renode.py")
 class RenodeState:
     RENODE_PID_PATH = '/tmp/renode_pid'
 
-    def __init__(self, renode_path: str, telnet_base: int = 29170, renode_cwd_path: str = "/tmp/renode/"):
+    def __init__(self, renode_path: str, telnet_base: int = 29170, renode_cwd_path: str = "/tmp/renode/", gui_disabled: bool = True):
         self.renode_pid = None
         self.renode_path = renode_path
         self.telnet_base = telnet_base
         self.renode_cwd_path = renode_cwd_path
+        self.gui_disabled = gui_disabled
 
     def start(self, extra_args: list = []):
         renode_args = [
-            '-P', f'{self.telnet_base}',
             '-e', f'logN {self.telnet_base + 1}',
             '-e', f'path set @{self.renode_cwd_path}',
             '--pid-file', f'{self.RENODE_PID_PATH}',
-
-            # Disable everything GUI related
-            '--hide-monitor', '--hide-log',
-            '--hide-analyzers', '--disable-xwt',
-
-            *extra_args
         ]
+
+        if self.gui_disabled:
+            # Disable everything GUI related, enable telnet
+            renode_args.extend([
+                '-P', f'{self.telnet_base}',
+                '--hide-monitor', '--hide-log',
+                '--hide-analyzers', '--disable-xwt',
+            ])
+
+        renode_args.extend(extra_args)
         subprocess.Popen([self.renode_path] + renode_args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
 
-        # Block until Renode opens the monitor socket
-        # TODO(pkoscik): add timeout
-        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
-            while sock.connect_ex(("localhost", self.telnet_base)):
-                sleep(1)
+        if self.gui_disabled:
+            # Block until Renode opens the monitor socket
+            # TODO(pkoscik): add timeout
+            with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
+                while sock.connect_ex(("localhost", self.telnet_base)):
+                    sleep(1)
 
         # This is safe as we have already waited for the socket to open
         with open(self.RENODE_PID_PATH, 'r') as f:

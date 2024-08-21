@@ -4,6 +4,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from os import environ
 import re
 import sys
 import asyncio
@@ -244,12 +245,17 @@ async def main():
         usage()
         exit(1)
 
+    renode_gui_enabled = environ.get('RENODE_HYPERVISOR_GUI_ENABLED', False)
+    if renode_gui_enabled:
+        logger.info('RENODE_HYPERVISOR_GUI_ENABLED is set, Renode will be run with GUI')
+
     telnet_proxy = TelnetProxy()
     stream_proxy = StreamProxy()
     filesystem_state = FileSystemState()
     renode_state = RenodeState(
         renode_path=RENODE_PATH,
         renode_cwd_path=RENODE_CWD,
+        gui_disabled=not renode_gui_enabled
     )
 
     async with serve(websocket_handler, "0.0.0.0", WS_PORT):
