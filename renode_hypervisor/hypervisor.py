@@ -228,7 +228,7 @@ def usage():
     print("Usage:\nrenode-hypervisor <RENODE_BINARY> <RENODE_EXECUTION_DIR> <PORT>")
     print("    RENODE_BINARY: path/command to start Renode")
     print("    RENODE_EXECUTION_DIR: path/directory used as a Renode workspace")
-    print("    PORT: WebSocket server port")
+    print("    PORT: WebSocket server port (defaults to 21234)")
 
 async def main():
     global telnet_proxy, stream_proxy, renode_state, filesystem_state
@@ -240,7 +240,7 @@ async def main():
 
         RENODE_PATH = sys.argv[1]
         RENODE_CWD = sys.argv[2]
-        WS_PORT = sys.argv[3]
+        WS_PORT = sys.argv[3] if len(sys.argv) > 3 else 21234
     except IndexError:
         usage()
         exit(1)
