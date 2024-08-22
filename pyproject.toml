@@ -40,3 +40,6 @@ dev = [
 
 [tool.setuptools]
 packages = ["renode_ws_proxy"]
+
+[tool.pyright]
+stubPath = "stubs"

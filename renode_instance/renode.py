@@ -10,6 +10,8 @@ import logging
 
 from pyrenode3.wrappers import Emulation, Monitor
 
+from Antmicro.Renode.Peripherals.UART import IUART
+
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
@@ -60,6 +62,26 @@ def quit(state: State, message):
     state.quit()
     logger.debug("closing")
     return {"rsp": "closing"}
+
+
+@command.register
+def uarts(state: State, message):
+    if "machine" not in message:
+        return {"err": "missing required argument 'machine'"}
+
+    machine = state.emulation.get_mach(message["machine"])
+
+    if not machine:
+        return {"err": "provided machine does not exist"}
+
+    instances = machine.internal.GetPeripheralsOfType[IUART]()
+
+    # TODO: do not assume local name is enough
+    names = [
+        name for ok, name in map(machine.internal.TryGetLocalName, instances) if ok
+    ]
+
+    return {"rsp": names}
 
 
 if __name__ == "__main__":
