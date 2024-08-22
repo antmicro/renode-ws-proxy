@@ -7,6 +7,7 @@
 import sys
 import json
 import logging
+from typing import Iterable, cast
 
 from pyrenode3.wrappers import Emulation, Monitor
 
@@ -81,6 +82,12 @@ def uarts(state: State, message):
         name for ok, name in map(machine.internal.TryGetLocalName, instances) if ok
     ]
 
+    return {"rsp": names}
+
+
+@command.register
+def machines(state: State, message):
+    names = list(cast(Iterable[str], state.emulation.Names))
     return {"rsp": names}
 
 
