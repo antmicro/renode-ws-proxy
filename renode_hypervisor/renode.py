@@ -17,8 +17,6 @@ logger = logging.getLogger("renode.py")
 
 
 class RenodeState:
-    RENODE_PID_PATH = '/tmp/renode_pid'
-
     def __init__(self, renode_path: str, telnet_base: int = 29170, renode_cwd_path: str = "/tmp/renode/", gui_disabled: bool = True):
         self.renode_pid = None
         self.renode_path = renode_path
@@ -30,7 +28,6 @@ class RenodeState:
         renode_args = [
             '-e', f'logN {self.telnet_base + 1}',
             '-e', f'path set @{self.renode_cwd_path}',
-            '--pid-file', f'{self.RENODE_PID_PATH}',
         ]
 
         if self.gui_disabled:
@@ -42,7 +39,7 @@ class RenodeState:
             ])
 
         renode_args.extend(extra_args)
-        subprocess.Popen([self.renode_path] + renode_args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        process = subprocess.Popen([self.renode_path] + renode_args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
 
         if self.gui_disabled:
             # Block until Renode opens the monitor socket
@@ -51,9 +48,7 @@ class RenodeState:
                 while sock.connect_ex(("localhost", self.telnet_base)):
                     sleep(1)
 
-        # This is safe as we have already waited for the socket to open
-        with open(self.RENODE_PID_PATH, 'r') as f:
-            self.renode_pid = int(f.read())
+        self.renode_pid = process.pid
 
         logger.info(f"Started Renode with PID: {self.renode_pid}")
         return self.renode_pid
