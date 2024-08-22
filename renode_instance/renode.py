@@ -15,37 +15,80 @@ logging.basicConfig(
 )
 logger = logging.getLogger("renode.py")
 
+
+class Command:
+    def __init__(self, default_handler):
+        self.commands = {}
+        self.default_handler = default_handler
+
+    def __getitem__(self, command):
+        return (
+            self.commands[command] if command in self.commands else self.default_handler
+        )
+
+    def register(self, handler):
+        self.commands[handler.__name__] = handler
+
+
+class State:
+    def __init__(self, logging_port: int):
+        self.running = True
+
+        self.emulation = Emulation()
+        self._m = Monitor()
+
+        self.execute(f"logNetwork {logging_port}")
+
+    def quit(self):
+        self.running = False
+
+    def execute(self, command: str):
+        return self._m.execute(command)
+
+
+def execute(state: State, message):
+    result = state.execute(message["cmd"])
+    logger.debug(f"executing Monitor command `{message['cmd']}` with result {result}")
+    return {"out": result}
+
+
+command = Command(execute)
+
+
+@command.register
+def quit(state: State, message):
+    state.quit()
+    logger.debug("closing")
+    return {"rsp": "closing"}
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: %s <LOGGING_PORT>" % sys.argv[0])
         exit(1)
 
     logging_port = int(sys.argv[1])
-
-    e = Emulation()
-    m = Monitor()
-
-    m.execute(f"logNetwork {logging_port}")
+    logger.debug(f"Starting pyrenode3 with logs on port {logging_port}")
+    state = State(logging_port)
 
     print(json.dumps({"rsp": "ready"}))
     sys.stdout.flush()
 
-    while True:
+    while state.running:
         for line in sys.stdin:
             response = {"err": "internal error: no response generated"}
             try:
                 message = json.loads(line)
-                if message["cmd"] == "quit":
-                    response = {"rsp": "closing"}
-                    exit(0)
-                output = m.execute(message["cmd"])
-                response = {"out": output}
-            except json.JSONDecodeError as err:
-                logger.error("Parsing error: %s" % str(err))
-                response = {"err": "parsing error: %s" % str(err)}
-            except Exception as err:
-                logger.error("Internal error %s" % str(err))
-                response = {"err": "internal error: %s" % str(err)}
+                response = command[message["cmd"]](state, message)
+            except json.JSONDecodeError as e:
+                logger.error("Parsing error: %s" % str(e))
+                response = {"err": "parsing error: %s" % str(e)}
+            except Exception as e:
+                logger.error("Internal error %s" % str(e))
+                response = {"err": "internal error: %s" % str(e)}
             finally:
                 print(json.dumps(response))
                 sys.stdout.flush()
+
+                if not state.running:
+                    break
