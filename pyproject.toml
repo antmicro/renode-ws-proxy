@@ -15,6 +15,7 @@ dependencies = [
     "websockets==13.*",
     "telnetlib3==2.0.*",
     "psutil==6.0.*",
+    "pyrenode3@git+https://github.com/antmicro/pyrenode3.git"
 ]
 
 classifiers = [
