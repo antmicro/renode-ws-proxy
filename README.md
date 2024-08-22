@@ -17,10 +17,16 @@ python3 -m venv venv && . venv/bin/activate
 pip install .
 ```
 
-Run the proxy providing a path to the Renode binary, a working directory and a port to listen on (the plugin defaults to 21234)
+Download Renode mono package:
 
 ```
-renode-ws-proxy <RENODE_BINARY> <RENODE_EXECUTION_DIR> <DEFAULT_GDB> <PORT>
+wget https://builds.renode.io/renode-latest.pkg.tar.xz
+```
+
+Run the proxy providing a path to the Renode mono package, a working directory and a port to listen on (the plugin defaults to 21234)
+
+```
+renode-ws-proxy <RENODE_PACKAGE> <RENODE_EXECUTION_DIR> <DEFAULT_GDB> <PORT>
 ```
 
 You can disable option to run Renode with GUI, by exporting `RENODE_PROXY_GUI_DISABLED` environmental variable.
@@ -35,4 +41,3 @@ export RENODE_PROXY_GUI_DISABLED=1
 docker build -t renode-ws-proxy .
 docker run -it -P renode-ws-proxy:latest
 ```
-

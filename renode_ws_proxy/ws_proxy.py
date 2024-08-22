@@ -12,6 +12,7 @@ import logging
 import subprocess
 import shutil
 from typing import cast, Optional
+from pathlib import Path
 
 from base64 import standard_b64decode, standard_b64encode
 
@@ -44,10 +45,13 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
 
     def handle_spawn(mess, ret):
         software = mess.payload["name"]
-        args = mess.payload.get("args", [])
-        gui = mess.payload.get("gui", False)
         if software == "renode":
-            if renode_state.start(args, gui):
+            cwd = Path(mess.payload.get("cwd", filesystem_state.cwd))
+            if not cwd.is_absolute():
+                cwd = filesystem_state.resolve_path(cwd)
+            gui = mess.payload.get("gui", False)
+            logger.debug("Spawning new Renode instance")
+            if renode_state.start(gui, cwd):
                 ret.status = _SUCCESS
         return ret
 
@@ -64,7 +68,7 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
     def handle_status(mess, ret):
         software = mess.payload["name"]
         if software == "renode":
-            if renode_state.renode_process:
+            if renode_state.renode:
                 ret.status = _SUCCESS
             else:
                 ret.error = "Renode not started"
@@ -82,6 +86,21 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
                 ret.error = "No stream connections"
         else:
             raise ValueError(f"Getting status for {software} is not supported")
+        return ret
+
+    def handle_exec_monitor(mess, ret):
+        commands = mess.payload["commands"]
+        ret.data = []
+        for command in commands:
+            logger.debug(f"Executing monitor command: '{command}'")
+            res, err = renode_state.execute(command)
+            if res or not err:
+                ret.data.append(res)
+            else:
+                ret.error = err
+                return ret
+
+        ret.status = _SUCCESS
         return ret
 
     def handle_command(mess, ret):
@@ -113,6 +132,8 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
             ret = handle_status(mess, ret)
         elif mess.action == "command":
             ret = handle_command(mess, ret)
+        elif mess.action == "exec-monitor":
+            ret = handle_exec_monitor(mess, ret)
         elif mess.action == "fs/list":
             if (
                 mess.payload is None
@@ -349,9 +370,9 @@ def usage():
     print("renode-ws-proxy: WebSocket based server for managing remote Renode instance")
     print()
     print(
-        "Usage:\nrenode-ws-proxy <RENODE_BINARY> <RENODE_EXECUTION_DIR> <DEFAULT_GDB> <PORT>"
+        "Usage:\nrenode-ws-proxy <RENODE_PACKAGE> <RENODE_EXECUTION_DIR> <DEFAULT_GDB> <PORT>"
     )
-    print("    RENODE_BINARY: path/command to start Renode")
+    print("    RENODE_PACKAGE: path to Renode mono package")
     print("    RENODE_EXECUTION_DIR: path/directory used as a Renode workspace")
     print("    DEFAULT_GDB: path to gdb that will be used when no gdb is provided")
     print("    PORT: WebSocket server port (defaults to 21234)")
@@ -397,7 +418,6 @@ async def main():
     stream_proxy = StreamProxy()
     renode_state = RenodeState(
         renode_path=renode_path,
-        renode_cwd_path=renode_cwd,
         gui_disabled=renode_gui_disabled,
     )
 
