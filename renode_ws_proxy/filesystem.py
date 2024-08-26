@@ -23,7 +23,7 @@ class FileSystemState:
 
     def stat(self, path):
         try:
-            full_path = os.path.join(self.cwd, path)
+            full_path = os.path.normpath(f"{self.cwd}/{path}")
             stat = os.lstat(full_path)
             return {
                 "success": True,
@@ -40,7 +40,7 @@ class FileSystemState:
 
     def upload(self, path, data):
         try:
-            full_path = os.path.join(self.cwd, path)
+            full_path = os.path.normpath(f"{self.cwd}/{path}")
             with open(full_path, 'wb') as file:
                 file.write(data)
             return {"success": True, "path": full_path}
@@ -50,7 +50,7 @@ class FileSystemState:
 
     def remove(self, path):
         try:
-            full_path = os.path.join(self.cwd, path)
+            full_path = os.path.normpath(f"{self.cwd}/{path}")
             if os.path.isdir(full_path):
                 shutil.rmtree(full_path)
             else:
@@ -62,8 +62,8 @@ class FileSystemState:
 
     def move(self, path, new_path):
         try:
-            full_path = os.path.join(self.cwd, path)
-            new_full_path = os.path.join(self.cwd, new_path)
+            full_path = os.path.normpath(f"{self.cwd}/{path}")
+            new_full_path = os.path.normpath(f"{self.cwd}/{new_path}")
             shutil.move(full_path, new_full_path)
             return {"success": True, "from": full_path, "to": new_full_path}
         except Exception as e:
@@ -72,8 +72,8 @@ class FileSystemState:
 
     def copy(self, path, new_path):
         try:
-            full_path = os.path.join(self.cwd, path)
-            new_full_path = os.path.join(self.cwd, new_path)
+            full_path = os.path.normpath(f"{self.cwd}/{path}")
+            new_full_path = os.path.normpath(f"{self.cwd}/{new_path}")
             shutil.copy(full_path, new_full_path)
             return {"success": True, "from": full_path, "to": new_full_path}
         except Exception as e:
