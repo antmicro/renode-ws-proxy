@@ -261,7 +261,7 @@ async def main():
     )
 
     # XXX: the `max_size` parameter is a temporary workaround for uploading large `elf` files!
-    async with serve(websocket_handler, "0.0.0.0", WS_PORT, max_size=100000000):
+    async with serve(websocket_handler, None, WS_PORT, max_size=100000000):
         try:
             await asyncio.Future()
         except asyncio.exceptions.CancelledError:
