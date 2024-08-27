@@ -8,6 +8,8 @@ It is utilized by [Renode Extension](https://github.com/antmicro/renode-extensio
 
 ## Running the proxy
 
+* Locally:
+
 Create a virtual environment and install this package:
 
 ```
@@ -28,3 +30,11 @@ export RENODE_PROXY_GUI_ENABLED=1
 ```
 
 This will also disable creating telnet server in Renode.
+
+* Docker:
+
+```
+docker build -t renode-ws-proxy .
+docker run -it -P renode-ws-proxy:latest
+```
+
