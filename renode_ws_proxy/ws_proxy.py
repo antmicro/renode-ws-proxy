@@ -258,7 +258,8 @@ async def main():
         gui_disabled=not renode_gui_enabled
     )
 
-    async with serve(websocket_handler, "0.0.0.0", WS_PORT):
+    # XXX: the `max_size` parameter is a temporary workaround for uploading large `elf` files!
+    async with serve(websocket_handler, "0.0.0.0", WS_PORT, max_size=100000000):
         try:
             await asyncio.Future()
         except asyncio.exceptions.CancelledError:
