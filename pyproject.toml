@@ -7,10 +7,10 @@ requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "renode-hypervisor"
+name = "renode-ws-proxy"
 version = "0.0.1"
 authors = [{name = "Antmicro Ltd.", email = "contact@antmicro.com"}]
-description = "Renode hypervisor for remote instances"
+description = "Renode WebSocket Proxy for remote instances"
 dependencies = [
     "websockets==12.*",
     "telnetlib3==2.0.*",
@@ -28,7 +28,7 @@ classifiers = [
 ]
 
 [project.scripts]
-renode-hypervisor = 'renode_hypervisor.hypervisor:run'
+renode-ws-proxy = 'renode_ws_proxy.ws_proxy:run'
 
 [tool.setuptools]
-packages = ["renode_hypervisor"]
+packages = ["renode_ws_proxy"]

@@ -16,11 +16,11 @@ from base64 import standard_b64decode, standard_b64encode
 from websockets.server import serve
 from websockets import WebSocketServerProtocol
 
-from renode_hypervisor.telnet_proxy import TelnetProxy
-from renode_hypervisor.stream_proxy import StreamProxy
-from renode_hypervisor.filesystem import FileSystemState
-from renode_hypervisor.renode import RenodeState
-from renode_hypervisor.protocols import (
+from renode_ws_proxy.telnet_proxy import TelnetProxy
+from renode_ws_proxy.stream_proxy import StreamProxy
+from renode_ws_proxy.filesystem import FileSystemState
+from renode_ws_proxy.renode import RenodeState
+from renode_ws_proxy.protocols import (
     Message,
     Response,
     DATA_PROTOCOL_VERSION,
@@ -29,12 +29,12 @@ from renode_hypervisor.protocols import (
 )
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger("hypervisor.py")
+logger = logging.getLogger("ws_proxy.py")
 
 LOGLEVEL = logging.DEBUG
 
 
-async def parse_hypervisor_request(request: str) -> str:
+async def parse_proxy_request(request: str) -> str:
     """ HELPER FUNCTIONS """
     def handle_spawn(mess, ret):
         software = mess.payload["name"]
@@ -152,7 +152,7 @@ async def parse_hypervisor_request(request: str) -> str:
 
 async def protocol(websocket: WebSocketServerProtocol):
     handler = {
-        '/hypervisor': parse_hypervisor_request,
+        '/proxy': parse_proxy_request,
     }[websocket.path]
 
     try:
@@ -213,7 +213,7 @@ async def websocket_handler(websocket: WebSocketServerProtocol, path: str) -> No
 
 path_handlers = [
     # WebSocket protocol
-    (re.compile(r'^/hypervisor$'), protocol, []),
+    (re.compile(r'^/proxy$'), protocol, []),
 
     # Telnet Proxy
     (re.compile(r'^/telnet/(?P<port>\w+)$'), telnet, ['port']),
@@ -223,9 +223,9 @@ path_handlers = [
 ]
 
 def usage():
-    print("renode-hypervisor: WebSocket based server for managing remote Renode instance")
+    print("renode-ws-proxy: WebSocket based server for managing remote Renode instance")
     print()
-    print("Usage:\nrenode-hypervisor <RENODE_BINARY> <RENODE_EXECUTION_DIR> <PORT>")
+    print("Usage:\nrenode-ws-proxy <RENODE_BINARY> <RENODE_EXECUTION_DIR> <PORT>")
     print("    RENODE_BINARY: path/command to start Renode")
     print("    RENODE_EXECUTION_DIR: path/directory used as a Renode workspace")
     print("    PORT: WebSocket server port (defaults to 21234)")
@@ -245,9 +245,9 @@ async def main():
         usage()
         exit(1)
 
-    renode_gui_enabled = environ.get('RENODE_HYPERVISOR_GUI_ENABLED', False)
+    renode_gui_enabled = environ.get('RENODE_PROXY_GUI_ENABLED', False)
     if renode_gui_enabled:
-        logger.info('RENODE_HYPERVISOR_GUI_ENABLED is set, Renode will be run with GUI')
+        logger.info('RENODE_PROXY_GUI_ENABLED is set, Renode will be run with GUI')
 
     telnet_proxy = TelnetProxy()
     stream_proxy = StreamProxy()

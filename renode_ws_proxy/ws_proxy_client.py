@@ -14,11 +14,11 @@ import logging
 from protocols import Message, Response, DATA_PROTOCOL_VERSION
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger("hypervisor_client.py")
+logger = logging.getLogger("ws_proxy_client.py")
 
 
-hypervisor_command_map = {
-    # Hypervisor commands
+proxy_command_map = {
+    # Proxy commands
     'sr': Message(version=DATA_PROTOCOL_VERSION, action="spawn", payload={"name": "renode"}).to_json(),
     'kr': Message(version=DATA_PROTOCOL_VERSION, action="kill", payload={"name": "renode"}).to_json(),
     'sg': Message(version=DATA_PROTOCOL_VERSION, action="spawn", payload={"name": "gdb"}).to_json(),
@@ -100,7 +100,7 @@ async def send_input(websocket):
                     if fs_context:
                         cmd = fs_command_map[user_input]
                     else:
-                        cmd = hypervisor_command_map[user_input]
+                        cmd = proxy_command_map[user_input]
 
                     await websocket.send(cmd)
                     logger.info(f"Client -> WebSocket: {repr(user_input)}")
@@ -139,7 +139,7 @@ async def receive_messages(websocket):
 
 async def websocket_client():
     if len(sys.argv) < 2:
-        print("Usage: python3 ./hypervisor_client.py <uri>")
+        print("Usage: python3 ./ws_proxy_client.py <uri>")
         exit(1)
 
     uri = sys.argv[1]
