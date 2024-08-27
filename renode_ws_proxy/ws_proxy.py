@@ -4,7 +4,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from os import environ
+from os import environ, path
 import re
 import sys
 import asyncio
@@ -239,7 +239,11 @@ async def main():
             exit(0)
 
         RENODE_PATH = sys.argv[1]
+        if not path.isfile(RENODE_PATH):
+            raise FileNotFoundError(f'{RENODE_PATH} not a file! Exiting')
         RENODE_CWD = sys.argv[2]
+        if not path.isdir(RENODE_CWD):
+            raise FileNotFoundError(f'{RENODE_CWD} not a directory! Exiting')
         WS_PORT = sys.argv[3] if len(sys.argv) > 3 else 21234
     except IndexError:
         usage()
