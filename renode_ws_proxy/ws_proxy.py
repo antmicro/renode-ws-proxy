@@ -114,8 +114,13 @@ async def parse_proxy_request(request: str) -> str:
             ret.status = _SUCCESS if result["success"] else _FAIL
         elif mess.action == "fs/dwnl":
             path = mess.payload["args"][0]
-            ret.data = standard_b64encode(filesystem_state.download(path))
-            ret.status = _SUCCESS if ret.data else _FAIL
+            result = filesystem_state.download(path)
+            success = result["success"]
+            if success:
+                ret.data = standard_b64encode(result["data"]).decode()
+            else:
+                ret.error = result["error"]
+            ret.status = _SUCCESS if success else _FAIL
         elif mess.action == "fs/upld":
             path = mess.payload["args"][0]
             data = mess.payload["data"]

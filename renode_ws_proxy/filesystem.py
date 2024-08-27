@@ -36,7 +36,12 @@ class FileSystemState:
             return {"success": False, "error": str(e)}
 
     def download(self, path):
-        raise NotImplementedError("Download method is not implemented")
+        try:
+            full_path = os.path.normpath(f"{self.cwd}/{path}")
+            with open(full_path, "rb") as f:
+                return {"success": True, "data": f.read()}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     def upload(self, path, data):
         try:
