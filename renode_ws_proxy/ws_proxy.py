@@ -103,6 +103,19 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
         ret.status = _SUCCESS
         return ret
 
+    def handle_exec_renode(mess, ret):
+        command = mess.payload["command"]
+        args = mess.payload.get("args", {})
+        logger.debug(f"Executing command: '{command}'")
+
+        res, err = renode_state.execute(command, **args)
+        if res or not err:
+            ret.status = _SUCCESS
+            ret.data = res
+        else:
+            ret.error = err
+        return ret
+
     def handle_command(mess, ret):
         command = mess.payload["name"]
         logger.info(f"Executing {command.split()}")
@@ -134,6 +147,8 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
             ret = handle_command(mess, ret)
         elif mess.action == "exec-monitor":
             ret = handle_exec_monitor(mess, ret)
+        elif mess.action == "exec-renode":
+            ret = handle_exec_renode(mess, ret)
         elif mess.action == "fs/list":
             if (
                 mess.payload is None

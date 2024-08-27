@@ -89,7 +89,7 @@ class RenodeState:
         self.kill()
         return False
 
-    def execute(self, command: str):
+    def execute(self, command: str, **kwargs):
         if not self.renode:
             logger.warning("Attempted to issue a request to Renode, but never started")
             return False, "Renode not started"
@@ -97,7 +97,7 @@ class RenodeState:
             logger.warning("Attempted to issue a request to Renode, but it is closed")
             return False, "Renode is closed"
 
-        self._renode_write({"cmd": command})
+        self._renode_write({"cmd": command, **kwargs})
         output = self._renode_read()
         assert output is not None
 
