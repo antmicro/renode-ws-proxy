@@ -8,5 +8,5 @@ RUN pip3 install .
 RUN mkdir /tmp/renode
 
 EXPOSE 21234
-CMD ["renode-ws-proxy", "renode", "/tmp/renode", "21234"]
+CMD ["renode-ws-proxy", "/opt/renode/renode", "/tmp/renode", "21234"]
 
