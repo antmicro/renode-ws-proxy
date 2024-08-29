@@ -40,9 +40,8 @@ async def parse_proxy_request(request: str) -> str:
         software = mess.payload["name"]
         args = mess.payload.get("args", [])
         if software == "renode":
-            if pid := renode_state.start(args):
+            if renode_state.start(args):
                 ret.status = _SUCCESS
-                ret.data = {"pid": pid}
         return ret
 
     def handle_kill(mess, ret):
@@ -58,9 +57,8 @@ async def parse_proxy_request(request: str) -> str:
     def handle_status(mess, ret):
         software = mess.payload["name"]
         if software == "renode":
-            if pid := renode_state.renode_pid:
+            if renode_state.renode_process:
                 ret.status = _SUCCESS
-                ret.data = {"pid": pid}
             else:
                 ret.error = "Renode not started"
         elif software == "telnet":

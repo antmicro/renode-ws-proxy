@@ -18,7 +18,7 @@ logger = logging.getLogger("renode.py")
 
 class RenodeState:
     def __init__(self, renode_path: str, telnet_base: int = 29170, renode_cwd_path: str = "/tmp/renode/", gui_disabled: bool = True):
-        self.renode_pid = None
+        self.renode_process = None
         self.renode_path = renode_path
         self.telnet_base = telnet_base
         self.renode_cwd_path = renode_cwd_path
@@ -39,7 +39,7 @@ class RenodeState:
             ])
 
         renode_args.extend(extra_args)
-        process = subprocess.Popen([self.renode_path] + renode_args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        self.renode_process = subprocess.Popen([self.renode_path] + renode_args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
 
         if self.gui_disabled:
             # Block until Renode opens the monitor socket
@@ -48,22 +48,23 @@ class RenodeState:
                 while sock.connect_ex(("localhost", self.telnet_base)):
                     sleep(1)
 
-        self.renode_pid = process.pid
-
-        logger.info(f"Started Renode with PID: {self.renode_pid}")
-        return self.renode_pid
+        logger.info(f"Started Renode process (PID: {self.renode_process.pid})")
+        return True
 
     def kill(self):
-        if not self.renode_pid:
-            logger.warning("Requested to kill Renode, but self.renode_pid is None")
+        if not self.renode_process:
+            logger.warning("Requested to kill Renode, but self.renode_process is None")
             return False
 
-        for _ in range(5):
-            os.kill(self.renode_pid, signal.SIGINT)
-            sleep(1)
-            if not psutil.pid_exists(self.renode_pid):
-                self.renode_pid = None
+        for i in range(5):
+            if self.renode_process.poll() is not None:
+                self.renode_process = None
+                logger.info("Killed Renode process")
                 return True
 
-        logger.error(f"Failed to kill Renode PID: {self.renode_pid}")
+            logger.info(f"Attempting to kill renode for the {i + 1} time! (PID: {self.renode_process.pid})")
+            self.renode_process.kill()
+            sleep(1)
+
+        logger.error(f"Failed to kill Renode process: {self.renode_process}")
         return False
