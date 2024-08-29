@@ -157,10 +157,10 @@ async def protocol(websocket: WebSocketServerProtocol):
 
     try:
         async for message in websocket:
+            logger.debug(f"WebSocket protocol handler ({websocket.path}) received: {repr(message)}")
             resp = await handler(message)
-            logger.debug(f"WebSocket protocol handler recived:{websocket.path} >>> {repr(message)}")
             await websocket.send(resp)
-            logger.debug(f"WebSocket protocol handler responded:{websocket.path} >>> {repr(resp)}")
+            logger.debug(f"WebSocket protocol handler ({websocket.path}) responded: {repr(resp)}")
     except Exception as e:
         logger.error(f"Error: {e}")
         await websocket.close()
