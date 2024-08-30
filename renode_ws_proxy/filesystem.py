@@ -13,9 +13,18 @@ class FileSystemState:
     def __init__(self, path: str):
         self.cwd = path
 
+    @staticmethod
+    def path_info(cwd, path):
+        full_path = os.path.join(cwd, path)
+        return {
+            "name": path,
+            "isfile": os.path.isfile(full_path), # If false, the path is a directory
+            "islink": os.path.islink(full_path)
+        }
+
     def list(self):
         try:
-            return [path_info(self.cwd, p) for p in os.listdir(self.cwd)]
+            return [self.path_info(self.cwd, p) for p in os.listdir(self.cwd)]
         except Exception as e:
             logger.error(f"Error listing directory: {self.cwd} >>> {e}")
             return []
@@ -84,10 +93,3 @@ class FileSystemState:
             logger.error(f"Error copying file: {path} to {new_path} >>> {e}")
             return {"success": False, "error": str(e)}
 
-def path_info(cwd, path):
-    full_path = os.path.join(cwd, path)
-    return {
-        "name": path,
-        "isfile": os.path.isfile(full_path), # If false, the path is a directory
-        "islink": os.path.islink(full_path)
-    }
