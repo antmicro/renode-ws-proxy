@@ -14,7 +14,7 @@ logger = logging.getLogger("renode.py")
 
 
 class RenodeState:
-    def __init__(self, renode_path: str, telnet_base: int = 29170, renode_cwd_path: str = "/tmp/renode/", gui_disabled: bool = True):
+    def __init__(self, renode_path: str, renode_cwd_path: str, telnet_base: int = 29170, gui_disabled: bool = True):
         self.renode_process = None
         self.renode_path = renode_path
         self.telnet_base = telnet_base

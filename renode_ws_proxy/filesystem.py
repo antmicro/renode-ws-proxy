@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("filesystem.py")
 
 class FileSystemState:
-    def __init__(self, path: str = "/tmp/renode/"):
+    def __init__(self, path: str):
         self.cwd = path
 
     def list(self):

@@ -253,7 +253,7 @@ async def main():
 
     telnet_proxy = TelnetProxy()
     stream_proxy = StreamProxy()
-    filesystem_state = FileSystemState()
+    filesystem_state = FileSystemState(RENODE_CWD)
     renode_state = RenodeState(
         renode_path=RENODE_PATH,
         renode_cwd_path=RENODE_CWD,
