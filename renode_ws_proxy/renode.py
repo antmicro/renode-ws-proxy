@@ -2,10 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import os
-import psutil
 import socket
-import signal
 import logging
 import subprocess
 
