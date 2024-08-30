@@ -5,7 +5,6 @@
 import os
 import shutil
 import logging
-from stat import *
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("filesystem.py")
@@ -28,7 +27,7 @@ class FileSystemState:
             return {
                 "success": True,
                 "size": stat.st_size,
-                "isfile": not S_ISDIR(stat.st_mode),
+                "isfile": os.path.isfile(full_path),
                 "ctime": stat.st_ctime,
                 "mtime": stat.st_mtime,
             }
