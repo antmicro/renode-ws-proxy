@@ -265,9 +265,7 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
 
 
 async def protocol(websocket: ServerConnection, cwd: Optional[str] = None):
-    filesystem_state = FileSystemState(
-        RENODE_CWD if cwd is None else path.normpath(f"{RENODE_CWD}/{cwd}")
-    )
+    filesystem_state = FileSystemState(RENODE_CWD, path=cwd)
 
     try:
         while True:

@@ -1,0 +1,33 @@
+stages:
+  - build
+  - test
+
+.common: &common
+  variables:
+    PIP_ROOT_USER_ACTION: ignore
+  image: 'python:3.12.5-bookworm'
+  only:
+    variables:
+      - $CI_COMMIT_REF_NAME == "main"
+      - $CI_PIPELINE_SOURCE == "merge_request"
+  before_script:
+    - pip install '.[dev]'
+
+format:
+  stage: build
+  <<: *common
+  script:
+    - ruff format --check
+
+lint:
+  stage: build
+  <<: *common
+  script:
+    - ruff check
+    - pyright
+
+test:
+  stage: test
+  <<: *common
+  script:
+    - pytest

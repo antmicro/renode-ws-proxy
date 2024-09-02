@@ -30,5 +30,12 @@ classifiers = [
 [project.scripts]
 renode-ws-proxy = 'renode_ws_proxy.ws_proxy:run'
 
+[project.optional-dependencies]
+dev = [
+    'pytest==8.3.*',
+    'ruff==0.6.*',
+    'pyright==1.1.*',
+]
+
 [tool.setuptools]
 packages = ["renode_ws_proxy"]
