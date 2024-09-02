@@ -89,12 +89,12 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
         ret.data = {'stdout': stdout, 'stderr': stderr}
         return ret
 
+    ret = Response(version=DATA_PROTOCOL_VERSION, status=_FAIL)
+
     """ PARSING """
     try:
         mess = Message.from_json(request)
         logger.debug(f"Deserialized Message: {mess}")
-
-        ret = Response(version=DATA_PROTOCOL_VERSION, status=_FAIL)
 
         if not mess.action:
             return ret.to_json()
@@ -108,22 +108,50 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
         elif mess.action == "command":
             ret = handle_command(mess, ret)
         elif mess.action == "fs/list":
+            if (
+                mess.payload is None
+                or "args" not in mess.payload
+                or not isinstance(mess.payload["args"], list)
+                or len(mess.payload["args"]) < 1
+            ):
+                raise ValueError("Bad payload")
             path = mess.payload["args"][0]
             ret.data = filesystem_state.list(path)
             ret.status = _SUCCESS if ret.data else _FAIL
         elif mess.action == "fs/mkdir":
+            if (
+                mess.payload is None
+                or "args" not in mess.payload
+                or not isinstance(mess.payload["args"], list)
+                or len(mess.payload["args"]) < 1
+            ):
+                raise ValueError("Bad payload")
             path = mess.payload["args"][0]
             result = filesystem_state.mkdir(path)
             success = result["success"]
             if not success:
-                ret.error = result["error"]
+                ret.error = cast(str, result["error"])
             ret.status = _SUCCESS if success else _FAIL
         elif mess.action == "fs/stat":
+            if (
+                mess.payload is None
+                or "args" not in mess.payload
+                or not isinstance(mess.payload["args"], list)
+                or len(mess.payload["args"]) < 1
+            ):
+                raise ValueError("Bad payload")
             path = mess.payload["args"][0]
             result = filesystem_state.stat(path)
             ret.data = result
             ret.status = _SUCCESS if result["success"] else _FAIL
         elif mess.action == "fs/dwnl":
+            if (
+                mess.payload is None
+                or "args" not in mess.payload
+                or not isinstance(mess.payload["args"], list)
+                or len(mess.payload["args"]) < 1
+            ):
+                raise ValueError("Bad payload")
             path = mess.payload["args"][0]
             result = filesystem_state.download(path)
             success = result["success"]
@@ -133,39 +161,90 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
                 ret.error = result["error"]
             ret.status = _SUCCESS if success else _FAIL
         elif mess.action == "fs/upld":
+            if (
+                mess.payload is None
+                or "args" not in mess.payload
+                or not isinstance(mess.payload["args"], list)
+                or len(mess.payload["args"]) < 1
+                or "data" not in mess.payload
+                or not isinstance(mess.payload["data"], str)
+            ):
+                raise ValueError("Bad payload")
             path = mess.payload["args"][0]
             data = mess.payload["data"]
             result = filesystem_state.upload(path, standard_b64decode(data))
             ret.data = result
             ret.status = _SUCCESS if result["success"] else _FAIL
         elif mess.action == "fs/remove":
+            if (
+                mess.payload is None
+                or "args" not in mess.payload
+                or not isinstance(mess.payload["args"], list)
+                or len(mess.payload["args"]) < 1
+            ):
+                raise ValueError("Bad payload")
             path = mess.payload["args"][0]
             result = filesystem_state.remove(path)
             ret.data = result
             ret.status = _SUCCESS if result["success"] else _FAIL
         elif mess.action == "fs/move":
+            if (
+                mess.payload is None
+                or "args" not in mess.payload
+                or not isinstance(mess.payload["args"], list)
+                or len(mess.payload["args"]) < 2
+            ):
+                raise ValueError("Bad payload")
             path = mess.payload["args"][0]
             new_path = mess.payload["args"][1]
             result = filesystem_state.move(path, new_path)
             ret.data = result
             ret.status = _SUCCESS if result["success"] else _FAIL
         elif mess.action == "fs/copy":
+            if (
+                mess.payload is None
+                or "args" not in mess.payload
+                or not isinstance(mess.payload["args"], list)
+                or len(mess.payload["args"]) < 2
+            ):
+                raise ValueError("Bad payload")
             path = mess.payload["args"][0]
             new_path = mess.payload["args"][1]
             result = filesystem_state.copy(path, new_path)
             ret.data = result
             ret.status = _SUCCESS if result["success"] else _FAIL
         elif mess.action == "fs/fetch":
+            if (
+                mess.payload is None
+                or "args" not in mess.payload
+                or not isinstance(mess.payload["args"], list)
+                or len(mess.payload["args"]) < 1
+            ):
+                raise ValueError("Bad payload")
             url = mess.payload["args"][0]
             result = filesystem_state.fetch_from_url(url)
             ret.data = result
             ret.status = _SUCCESS if result["success"] else _FAIL
         elif mess.action == "fs/zip":
+            if (
+                mess.payload is None
+                or "args" not in mess.payload
+                or not isinstance(mess.payload["args"], list)
+                or len(mess.payload["args"]) < 1
+            ):
+                raise ValueError("Bad payload")
             url = mess.payload["args"][0]
             result = filesystem_state.download_extract_zip(url)
             ret.data = result
             ret.status = _SUCCESS if result["success"] else _FAIL
         elif mess.action == "tweak/socket":
+            if (
+                mess.payload is None
+                or "args" not in mess.payload
+                or not isinstance(mess.payload["args"], list)
+                or len(mess.payload["args"]) < 1
+            ):
+                raise ValueError("Bad payload")
             file = mess.payload["args"][0]
             result = filesystem_state.replace_analyzer(file)
             ret.data = result

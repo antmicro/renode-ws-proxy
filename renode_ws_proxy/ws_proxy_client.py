@@ -11,7 +11,7 @@ import websockets
 import sys
 import logging
 
-from protocols import Message, Response, DATA_PROTOCOL_VERSION
+from renode_ws_proxy.protocols import Message, Response, DATA_PROTOCOL_VERSION
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("ws_proxy_client.py")
