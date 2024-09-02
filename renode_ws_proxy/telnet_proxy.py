@@ -6,7 +6,7 @@ import asyncio
 import logging
 import telnetlib3
 
-from websockets import WebSocketServerProtocol
+from websockets.asyncio.server import ServerConnection
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("telnet_proxy.py")
@@ -16,7 +16,7 @@ class TelnetProxy:
     def __init__(self):
         self.connections = {}
 
-    async def add_connection(self, port: str, websocket: WebSocketServerProtocol) -> None:
+    async def add_connection(self, port: str, websocket: ServerConnection) -> None:
         reader, writer = await telnetlib3.open_connection('localhost', port)
         self.connections[port] = {
             'websocket': websocket,
@@ -49,7 +49,9 @@ class TelnetProxy:
                 # XXX(pkoscik): why is this needed?
                 if not message:
                     break
-                logger.debug(f"WebSocket:{websocket.path} -> Telnet:{port} >>> {repr(message)}")
+                logger.debug(
+                    f"WebSocket -> Telnet:{port} >>> {repr(message)}"
+                )
                 tn_writer.write(message)
         except Exception as e:
             logger.error(f"handle_websocket_rx: error: {e}")
@@ -65,7 +67,9 @@ class TelnetProxy:
         try:
             message = await tn_reader.read(128)
             while len(message) > 0:
-                logger.debug(f"Telnet:{port} -> WebSocket:{websocket.path} >>> {repr(message)}")
+                logger.debug(
+                    f"Telnet:{port} -> WebSocket >>> {repr(message)}"
+                )
                 await websocket.send(message)
                 message = await tn_reader.read(128)
         except Exception as e:

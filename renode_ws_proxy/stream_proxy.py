@@ -5,7 +5,7 @@
 import asyncio
 import logging
 
-from websockets import WebSocketServerProtocol
+from websockets.asyncio.server import ServerConnection
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("stream_proxy.py")
@@ -16,7 +16,7 @@ class StreamProxy:
         self.connections = {}
         self.buffor = buffer
 
-    async def add_connection(self, program: str, websocket: WebSocketServerProtocol) -> None:
+    async def add_connection(self, program: str, websocket: ServerConnection) -> None:
         proc = await asyncio.create_subprocess_exec(
             f'{program}',
             '--interpreter=mi',
@@ -54,7 +54,9 @@ class StreamProxy:
                 # XXX(pkoscik): why is this needed?
                 if not message:
                     break
-                logger.debug(f"WebSocket:{websocket.path} -> stdin:{program} >>> {repr(message)}")
+                logger.debug(
+                    f"WebSocket -> stdin:{program} >>> {repr(message)}"
+                )
                 stdin.write(message.encode())
                 await stdin.drain()
         except Exception as e:
@@ -74,7 +76,9 @@ class StreamProxy:
                 if not buf:
                     break
                 message = buf.decode()
-                logger.debug(f"stdout:{program} -> WebSocket:{websocket.path} >>> {repr(message)}")
+                logger.debug(
+                    f"stdout:{program} -> WebSocket >>> {repr(message)}"
+                )
                 await websocket.send(message)
         except Exception as e:
             logger.error(f"handle_stdout_rx: error: {e}")
@@ -93,7 +97,9 @@ class StreamProxy:
                 if not buf:
                     break
                 message = buf.decode()
-                logger.debug(f"stderr:{program} -> WebSocket:{websocket.path} >>> {repr(message)}")
+                logger.debug(
+                    f"stderr:{program} -> WebSocket >>> {repr(message)}"
+                )
                 await websocket.send(message)
         except Exception as e:
             logger.error(f"handle_stderr_rx error: {e}")

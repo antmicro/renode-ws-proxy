@@ -15,8 +15,7 @@ import shutil
 from base64 import standard_b64decode, standard_b64encode
 from typing import Optional
 
-from websockets.server import serve
-from websockets import WebSocketServerProtocol
+from websockets.asyncio.server import serve, ServerConnection
 
 from renode_ws_proxy.telnet_proxy import TelnetProxy
 from renode_ws_proxy.stream_proxy import StreamProxy
@@ -180,16 +179,15 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
     return ret.to_json()
 
 
-async def protocol(websocket: WebSocketServerProtocol, cwd: Optional[str] = None):
-
+async def protocol(websocket: ServerConnection, cwd: Optional[str] = None):
     filesystem_state = FileSystemState(RENODE_CWD if cwd is None else path.normpath(f'{RENODE_CWD}/{cwd}'))
 
     try:
         async for message in websocket:
-            logger.debug(f"WebSocket protocol handler ({websocket.path}) received: {repr(message)}")
+            logger.debug(f"WebSocket protocol handler received: {repr(message)}")
             resp = await parse_proxy_request(message, filesystem_state)
             await websocket.send(resp)
-            logger.debug(f"WebSocket protocol handler ({websocket.path}) responded: {repr(resp)}")
+            logger.debug(f"WebSocket protocol handler responded: {repr(resp)}")
     except Exception as e:
         logger.error(f"Error: {e}")
         await websocket.close()
@@ -197,7 +195,7 @@ async def protocol(websocket: WebSocketServerProtocol, cwd: Optional[str] = None
         renode_state.kill()
 
 
-async def telnet(websocket: WebSocketServerProtocol, port: str):
+async def telnet(websocket: ServerConnection, port: str):
     try:
         await telnet_proxy.add_connection(port, websocket)
         asyncio.create_task(telnet_proxy.handle_telnet_rx(port))
@@ -209,7 +207,7 @@ async def telnet(websocket: WebSocketServerProtocol, port: str):
         telnet_proxy.remove_connection(port)
 
 
-async def stream(websocket: WebSocketServerProtocol, program: str):
+async def stream(websocket: ServerConnection, program: str):
     program = program if program == 'None' else DEFAULT_GDB
     logger.debug(f"stream: starting {program}")
     try:
@@ -224,7 +222,8 @@ async def stream(websocket: WebSocketServerProtocol, program: str):
         stream_proxy.remove_connection(program)
 
 
-async def websocket_handler(websocket: WebSocketServerProtocol, path: str) -> None:
+async def websocket_handler(websocket: ServerConnection) -> None:
+    path = websocket.request.path if websocket.request is not None else ""
     logger.info(f"Connecting WebSocket {path}")
 
     for pattern, handler, param_names in path_handlers:
@@ -304,7 +303,7 @@ async def main():
     # XXX: the `max_size` parameter is a temporary workaround for uploading large `elf` files!
     async with serve(websocket_handler, None, WS_PORT, max_size=100000000):
         try:
-            await asyncio.Future()
+            await asyncio.get_running_loop().create_future()
         except asyncio.exceptions.CancelledError:
             logger.error("exit requested")
             renode_state.kill()

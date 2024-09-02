@@ -12,7 +12,7 @@ version = "0.0.1"
 authors = [{name = "Antmicro Ltd.", email = "contact@antmicro.com"}]
 description = "Renode WebSocket Proxy for remote instances"
 dependencies = [
-    "websockets==12.*",
+    "websockets==13.*",
     "telnetlib3==2.0.*",
     "psutil==6.0.*",
 ]
