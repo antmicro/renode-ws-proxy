@@ -16,7 +16,7 @@ class TelnetProxy:
     def __init__(self):
         self.connections = {}
 
-    async def add_connection(self, port: str, websocket: ServerConnection) -> None:
+    async def add_connection(self, port: int, websocket: ServerConnection) -> None:
         reader, writer = await telnetlib3.open_connection('localhost', port)
         self.connections[port] = {
             'websocket': websocket,
@@ -24,7 +24,7 @@ class TelnetProxy:
             'tnWriter': writer
         }
 
-    def remove_connection(self, port: str) -> None:
+    def remove_connection(self, port: int) -> None:
         if port in self.connections and (conn := self.connections.pop(port)):
             logger.info(f"Removing Telnet:{port} proxy")
             if tn_writer := conn.get('tnWriter'):
@@ -34,11 +34,11 @@ class TelnetProxy:
             if websocket := conn.get('websocket'):
                 asyncio.create_task(websocket.close())
 
-    async def _ensure_ready(self, port: str) -> None:
+    async def _ensure_ready(self, port: int) -> None:
         while not all(self.connections.get(port, {}).values()):
             await asyncio.sleep(0.01)
 
-    async def handle_websocket_rx(self, port: str) -> None:
+    async def handle_websocket_rx(self, port: int) -> None:
         if not (conn := self.connections.get(port)):
             return
         websocket, tn_writer = conn['websocket'], conn['tnWriter']
@@ -58,7 +58,7 @@ class TelnetProxy:
         finally:
             self.remove_connection(port)
 
-    async def handle_telnet_rx(self, port: str) -> None:
+    async def handle_telnet_rx(self, port: int) -> None:
         if not (conn := self.connections.get(port)):
             return
         websocket, tn_reader = conn['websocket'], conn['tnReader']

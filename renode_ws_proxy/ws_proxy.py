@@ -11,9 +11,9 @@ import asyncio
 import logging
 import subprocess
 import shutil
+from typing import cast, Optional
 
 from base64 import standard_b64decode, standard_b64encode
-from typing import Optional
 
 from websockets.asyncio.server import serve, ServerConnection
 
@@ -183,7 +183,10 @@ async def protocol(websocket: ServerConnection, cwd: Optional[str] = None):
     filesystem_state = FileSystemState(RENODE_CWD if cwd is None else path.normpath(f'{RENODE_CWD}/{cwd}'))
 
     try:
-        async for message in websocket:
+        while True:
+            message = await websocket.recv(decode=True)
+            # NOTE: message will always be a string because we pass decode=True to recv
+            message = cast(str, message)
             logger.debug(f"WebSocket protocol handler received: {repr(message)}")
             resp = await parse_proxy_request(message, filesystem_state)
             await websocket.send(resp)
@@ -195,7 +198,8 @@ async def protocol(websocket: ServerConnection, cwd: Optional[str] = None):
         renode_state.kill()
 
 
-async def telnet(websocket: ServerConnection, port: str):
+async def telnet(websocket: ServerConnection, port_str: str):
+    port = int(port_str)
     try:
         await telnet_proxy.add_connection(port, websocket)
         asyncio.create_task(telnet_proxy.handle_telnet_rx(port))
@@ -249,7 +253,7 @@ path_handlers = [
     (re.compile(r'^/proxy/(?P<cwd>.+)$'), protocol, ['cwd']),
 
     # Telnet Proxy
-    (re.compile(r'^/telnet/(?P<port>\w+)$'), telnet, ['port']),
+    (re.compile(r'^/telnet/(?P<port_str>\w+)$'), telnet, ['port_str']),
 
     # Stream Proxy
     (re.compile(r'^/run/(?P<program>.*)$'), stream, ['program']),
@@ -278,17 +282,19 @@ async def main():
         RENODE_CWD = sys.argv[2]
         if not path.isdir(RENODE_CWD):
             raise FileNotFoundError(f'{RENODE_CWD} not a directory! Exiting')
-        default_gdb = sys.argv[3] if len(sys.argv) > 3 else DEFAULT_GDB
-        DEFAULT_GDB = shutil.which(default_gdb)
-        if DEFAULT_GDB is None:
-            raise FileNotFoundError(f'{default_gdb} not a file or cannot be executed! Exiting')
+        default_gdb_ = sys.argv[3] if len(sys.argv) > 3 else DEFAULT_GDB
+        default_gdb_ = shutil.which(default_gdb_)
+        if default_gdb_ is None:
+            raise FileNotFoundError(f'{default_gdb_} not a file or cannot be executed! Exiting')
+        DEFAULT_GDB = default_gdb_
         logger.debug(f'DEFAULT_GDB set to `{DEFAULT_GDB}`')
-        WS_PORT = sys.argv[4] if len(sys.argv) > 4 else 21234
+        WS_PORT = int(sys.argv[4]) if len(sys.argv) > 4 else 21234
     except IndexError:
         usage()
         exit(1)
 
-    renode_gui_disabled = environ.get('RENODE_PROXY_GUI_DISABLED', False)
+    renode_gui_disabled = environ.get('RENODE_PROXY_GUI_DISABLED', None)
+    renode_gui_disabled = False if renode_gui_disabled is None else renode_gui_disabled.lower() in ['1', 'true', 'yes']
     if renode_gui_disabled:
         logger.info('RENODE_PROXY_GUI_DISABLED is set, Renode cannot be run with GUI')
 

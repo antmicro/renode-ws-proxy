@@ -34,7 +34,7 @@ class Message:
 class Response:
     version: str
     status: str
-    data: Optional[Dict[str, Any]] = field(default_factory=dict)
+    data: Optional[Any] = field(default_factory=dict)
     error: Optional[str] = None
 
     def to_json(self) -> str:

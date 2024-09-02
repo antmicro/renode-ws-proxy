@@ -33,10 +33,10 @@ class FileSystemState:
         with open(file, "w") as sources:
             for line in lines:
                 try:
-                    newLine = re.sub(r"^showAnalyzer ([a-zA-Z0-9]+)", r'emulation CreateServerSocketTerminal 29172 "term"; connector Connect \1 term', line)
+                    line = re.sub(r"^showAnalyzer ([a-zA-Z0-9]+)", r'emulation CreateServerSocketTerminal 29172 "term"; connector Connect \1 term', line)
                 except Exception as e:
                     logger.error(str(e))
-                sources.write(newLine)
+                sources.write(line)
 
         return {"success": True}
 
