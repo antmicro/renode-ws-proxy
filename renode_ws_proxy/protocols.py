@@ -11,6 +11,7 @@ DATA_PROTOCOL_VERSION = "0.0.1"
 _SUCCESS = "success"
 _FAIL = "failure"
 
+
 @dataclass
 class Message:
     version: str
@@ -24,7 +25,7 @@ class Message:
         return json.dumps(asdict(self))
 
     @staticmethod
-    def from_json(json_str: str) -> 'Message':
+    def from_json(json_str: str) -> "Message":
         """Deserialize a JSON string to a Message object."""
         data = json.loads(json_str)
         return Message(**data)
@@ -42,21 +43,25 @@ class Response:
         return json.dumps(asdict(self))
 
     @staticmethod
-    def from_json(json_str: str) -> 'Response':
+    def from_json(json_str: str) -> "Response":
         """Deserialize a JSON string to a Response object."""
         data = json.loads(json_str)
         return Response(**data)
 
 
 if __name__ == "__main__":
-    json_str = Message(version="1.0", action="create", payload={"id": 123, "name": "test"}).to_json()
+    json_str = Message(
+        version="1.0", action="create", payload={"id": 123, "name": "test"}
+    ).to_json()
     print("Serialized JSON:", json_str)
     msg_received = Message.from_json(json_str)
     print("Deserialized Message:", msg_received)
 
     print()
 
-    resp_json_str = Response(version="1.0", status="success", data={"id": 123, "name": "test"}).to_json()
+    resp_json_str = Response(
+        version="1.0", status="success", data={"id": 123, "name": "test"}
+    ).to_json()
     print("Serialized Response JSON:", resp_json_str)
     resp_received = Response.from_json(resp_json_str)
     print("Deserialized Response:", resp_received)

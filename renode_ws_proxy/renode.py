@@ -12,12 +12,16 @@ import subprocess
 from time import sleep
 from contextlib import closing
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger("renode.py")
 
+
 # source https://psutil.readthedocs.io/en/latest/#kill-process-tree
-def kill_proc_tree(pid, sig=signal.SIGTERM, include_parent=True,
-                   timeout=None, on_terminate=None):
+def kill_proc_tree(
+    pid, sig=signal.SIGTERM, include_parent=True, timeout=None, on_terminate=None
+):
     """Kill a process tree (including grandchildren) with signal
     "sig" and return a (gone, still_alive) tuple.
     "on_terminate", if specified, is a callback function which is
@@ -33,13 +37,18 @@ def kill_proc_tree(pid, sig=signal.SIGTERM, include_parent=True,
             p.send_signal(sig)
         except psutil.NoSuchProcess:
             pass
-    gone, alive = psutil.wait_procs(children, timeout=timeout,
-                                    callback=on_terminate)
+    gone, alive = psutil.wait_procs(children, timeout=timeout, callback=on_terminate)
     return (gone, alive)
 
 
 class RenodeState:
-    def __init__(self, renode_path: str, renode_cwd_path: str, telnet_base: int = 29170, gui_disabled: bool = True):
+    def __init__(
+        self,
+        renode_path: str,
+        renode_cwd_path: str,
+        telnet_base: int = 29170,
+        gui_disabled: bool = True,
+    ):
         self.renode_process = None
         self.renode_path = renode_path
         self.telnet_base = telnet_base
@@ -52,20 +61,32 @@ class RenodeState:
             return False
 
         renode_args = [
-            '-e', f'logN {self.telnet_base + 1}',
-            '-e', f'path add @{self.renode_cwd_path}',
+            "-e",
+            f"logN {self.telnet_base + 1}",
+            "-e",
+            f"path add @{self.renode_cwd_path}",
         ]
 
         if self.gui_disabled or not gui:
             # Disable everything GUI related, enable telnet
-            renode_args.extend([
-                '-P', f'{self.telnet_base}',
-                '--hide-monitor', '--hide-log',
-                '--hide-analyzers', '--disable-xwt',
-            ])
+            renode_args.extend(
+                [
+                    "-P",
+                    f"{self.telnet_base}",
+                    "--hide-monitor",
+                    "--hide-log",
+                    "--hide-analyzers",
+                    "--disable-xwt",
+                ]
+            )
 
         renode_args.extend(extra_args)
-        self.renode_process = subprocess.Popen([self.renode_path] + renode_args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        self.renode_process = subprocess.Popen(
+            [self.renode_path] + renode_args,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
 
         if self.gui_disabled:
             # Block until Renode opens the monitor socket

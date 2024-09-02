@@ -29,15 +29,19 @@ from renode_ws_proxy.protocols import (
     _FAIL,
 )
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger("ws_proxy.py")
 
 LOGLEVEL = logging.DEBUG
-RENODE_CWD = '/tmp/renode'
-DEFAULT_GDB = 'gdb-multiarch'
+RENODE_CWD = "/tmp/renode"
+DEFAULT_GDB = "gdb-multiarch"
+
 
 async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -> str:
-    """ HELPER FUNCTIONS """
+    """HELPER FUNCTIONS"""
+
     def handle_spawn(mess, ret):
         software = mess.payload["name"]
         args = mess.payload.get("args", [])
@@ -83,10 +87,12 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
     def handle_command(mess, ret):
         command = mess.payload["name"]
         logger.info(f"Executing {command.split()}")
-        process = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = subprocess.Popen(
+            command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
         stdout, stderr = process.communicate()
         ret.status = _SUCCESS if not process.returncode else _FAIL
-        ret.data = {'stdout': stdout, 'stderr': stderr}
+        ret.data = {"stdout": stdout, "stderr": stderr}
         return ret
 
     ret = Response(version=DATA_PROTOCOL_VERSION, status=_FAIL)
@@ -259,7 +265,9 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
 
 
 async def protocol(websocket: ServerConnection, cwd: Optional[str] = None):
-    filesystem_state = FileSystemState(RENODE_CWD if cwd is None else path.normpath(f'{RENODE_CWD}/{cwd}'))
+    filesystem_state = FileSystemState(
+        RENODE_CWD if cwd is None else path.normpath(f"{RENODE_CWD}/{cwd}")
+    )
 
     try:
         while True:
@@ -291,7 +299,7 @@ async def telnet(websocket: ServerConnection, port_str: str):
 
 
 async def stream(websocket: ServerConnection, program: str):
-    program = program if program == 'None' else DEFAULT_GDB
+    program = program if program == "None" else DEFAULT_GDB
     logger.debug(f"stream: starting {program}")
     try:
         await stream_proxy.add_connection(program, websocket)
@@ -328,61 +336,69 @@ async def websocket_handler(websocket: ServerConnection) -> None:
 
 path_handlers = [
     # WebSocket protocol
-    (re.compile(r'^/proxy$'), protocol, []),
-    (re.compile(r'^/proxy/(?P<cwd>.+)$'), protocol, ['cwd']),
-
+    (re.compile(r"^/proxy$"), protocol, []),
+    (re.compile(r"^/proxy/(?P<cwd>.+)$"), protocol, ["cwd"]),
     # Telnet Proxy
-    (re.compile(r'^/telnet/(?P<port_str>\w+)$'), telnet, ['port_str']),
-
+    (re.compile(r"^/telnet/(?P<port_str>\w+)$"), telnet, ["port_str"]),
     # Stream Proxy
-    (re.compile(r'^/run/(?P<program>.*)$'), stream, ['program']),
+    (re.compile(r"^/run/(?P<program>.*)$"), stream, ["program"]),
 ]
+
 
 def usage():
     print("renode-ws-proxy: WebSocket based server for managing remote Renode instance")
     print()
-    print("Usage:\nrenode-ws-proxy <RENODE_BINARY> <RENODE_EXECUTION_DIR> <DEFAULT_GDB> <PORT>")
+    print(
+        "Usage:\nrenode-ws-proxy <RENODE_BINARY> <RENODE_EXECUTION_DIR> <DEFAULT_GDB> <PORT>"
+    )
     print("    RENODE_BINARY: path/command to start Renode")
     print("    RENODE_EXECUTION_DIR: path/directory used as a Renode workspace")
     print("    DEFAULT_GDB: path to gdb that will be used when no gdb is provided")
     print("    PORT: WebSocket server port (defaults to 21234)")
 
+
 async def main():
     global telnet_proxy, stream_proxy, renode_state, DEFAULT_GDB
 
     try:
-        if sys.argv[1] in ['help', '--help', '-h']:
+        if sys.argv[1] in ["help", "--help", "-h"]:
             usage()
             exit(0)
 
         RENODE_PATH = sys.argv[1]
         if not path.isfile(RENODE_PATH):
-            raise FileNotFoundError(f'{RENODE_PATH} not a file! Exiting')
+            raise FileNotFoundError(f"{RENODE_PATH} not a file! Exiting")
         RENODE_CWD = sys.argv[2]
         if not path.isdir(RENODE_CWD):
-            raise FileNotFoundError(f'{RENODE_CWD} not a directory! Exiting')
+            raise FileNotFoundError(f"{RENODE_CWD} not a directory! Exiting")
         default_gdb_ = sys.argv[3] if len(sys.argv) > 3 else DEFAULT_GDB
         default_gdb_ = shutil.which(default_gdb_)
         if default_gdb_ is None:
-            raise FileNotFoundError(f'{default_gdb_} not a file or cannot be executed! Exiting')
+            raise FileNotFoundError(
+                f"{default_gdb_} not a file or cannot be executed! Exiting"
+            )
         DEFAULT_GDB = default_gdb_
-        logger.debug(f'DEFAULT_GDB set to `{DEFAULT_GDB}`')
+        logger.debug(f"DEFAULT_GDB set to `{DEFAULT_GDB}`")
         WS_PORT = int(sys.argv[4]) if len(sys.argv) > 4 else 21234
     except IndexError:
         usage()
         exit(1)
 
-    renode_gui_disabled = environ.get('RENODE_PROXY_GUI_DISABLED', None)
-    renode_gui_disabled = False if renode_gui_disabled is None else renode_gui_disabled.lower() in ['1', 'true', 'yes']
+    renode_gui_disabled = environ.get("RENODE_PROXY_GUI_DISABLED", None)
+    renode_gui_disabled = (
+        False
+        if renode_gui_disabled is None
+        else renode_gui_disabled.lower() in ["1", "true", "yes"]
+    )
     if renode_gui_disabled:
-        logger.info('RENODE_PROXY_GUI_DISABLED is set, Renode cannot be run with GUI')
+        logger.info("RENODE_PROXY_GUI_DISABLED is set, Renode cannot be run with GUI")
 
     telnet_proxy = TelnetProxy()
     stream_proxy = StreamProxy()
     renode_state = RenodeState(
         renode_path=RENODE_PATH,
         renode_cwd_path=RENODE_CWD,
-        gui_disabled=renode_gui_disabled
+        gui_disabled=renode_gui_disabled,
     )
 
     # XXX: the `max_size` parameter is a temporary workaround for uploading large `elf` files!
@@ -401,5 +417,5 @@ def run():
     asyncio.run(main())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run()

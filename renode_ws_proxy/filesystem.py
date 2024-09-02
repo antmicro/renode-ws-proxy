@@ -12,6 +12,7 @@ import urllib.request
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("filesystem.py")
 
+
 class FileSystemState:
     def __init__(self, path: str):
         self.cwd = path
@@ -22,30 +23,34 @@ class FileSystemState:
         full_path = os.path.join(cwd, path)
         return {
             "name": path,
-            "isfile": os.path.isfile(full_path), # If false, the path is a directory
-            "islink": os.path.islink(full_path)
+            "isfile": os.path.isfile(full_path),  # If false, the path is a directory
+            "islink": os.path.islink(full_path),
         }
 
-    def replace_analyzer(self, file, path='/'):
+    def replace_analyzer(self, file):
         file = f"{self.cwd}/{file}"
         with open(file, "r") as sources:
             lines = sources.readlines()
         with open(file, "w") as sources:
             for line in lines:
                 try:
-                    line = re.sub(r"^showAnalyzer ([a-zA-Z0-9]+)", r'emulation CreateServerSocketTerminal 29172 "term"; connector Connect \1 term', line)
+                    line = re.sub(
+                        r"^showAnalyzer ([a-zA-Z0-9]+)",
+                        r'emulation CreateServerSocketTerminal 29172 "term"; connector Connect \1 term',
+                        line,
+                    )
                 except Exception as e:
                     logger.error(str(e))
                 sources.write(line)
 
         return {"success": True}
 
-    def download_extract_zip(self, zip_url, path='/'):
+    def download_extract_zip(self, zip_url, path="/"):
         temp_zip_path = f"{self.cwd}/temp.zip"
         full_path = os.path.normpath(f"{self.cwd}/{path}")
         try:
             urllib.request.urlretrieve(zip_url, temp_zip_path)
-            with zipfile.ZipFile(temp_zip_path, 'r') as zip_ref:
+            with zipfile.ZipFile(temp_zip_path, "r") as zip_ref:
                 zip_ref.extractall(full_path)
             os.remove(temp_zip_path)
         except Exception as e:
@@ -54,7 +59,7 @@ class FileSystemState:
 
         return {"success": True, "path": full_path}
 
-    def fetch_from_url(self, url, path='/'):
+    def fetch_from_url(self, url, path="/"):
         fname = os.path.basename(url)
         full_path = os.path.normpath(f"{self.cwd}/{path}/{fname}")
         try:
@@ -100,7 +105,7 @@ class FileSystemState:
         try:
             full_path = os.path.normpath(f"{self.cwd}/{path}")
             os.makedirs(os.path.dirname(full_path), exist_ok=True)
-            with open(full_path, 'wb') as file:
+            with open(full_path, "wb") as file:
                 file.write(data)
             return {"success": True, "path": full_path}
         except Exception as e:
@@ -146,4 +151,3 @@ class FileSystemState:
             return {"success": True}
         except Exception as e:
             return {"success": False, "error": str(e)}
-        

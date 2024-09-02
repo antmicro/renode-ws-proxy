@@ -8,7 +8,9 @@ import telnetlib3
 
 from websockets.asyncio.server import ServerConnection
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger("telnet_proxy.py")
 
 
@@ -17,21 +19,21 @@ class TelnetProxy:
         self.connections = {}
 
     async def add_connection(self, port: int, websocket: ServerConnection) -> None:
-        reader, writer = await telnetlib3.open_connection('localhost', port)
+        reader, writer = await telnetlib3.open_connection("localhost", port)
         self.connections[port] = {
-            'websocket': websocket,
-            'tnReader': reader,
-            'tnWriter': writer
+            "websocket": websocket,
+            "tnReader": reader,
+            "tnWriter": writer,
         }
 
     def remove_connection(self, port: int) -> None:
         if port in self.connections and (conn := self.connections.pop(port)):
             logger.info(f"Removing Telnet:{port} proxy")
-            if tn_writer := conn.get('tnWriter'):
+            if tn_writer := conn.get("tnWriter"):
                 tn_writer.close()
-            if tn_reader := conn.get('tnReader'):
+            if tn_reader := conn.get("tnReader"):
                 tn_reader.feed_eof()
-            if websocket := conn.get('websocket'):
+            if websocket := conn.get("websocket"):
                 asyncio.create_task(websocket.close())
 
     async def _ensure_ready(self, port: int) -> None:
@@ -41,7 +43,7 @@ class TelnetProxy:
     async def handle_websocket_rx(self, port: int) -> None:
         if not (conn := self.connections.get(port)):
             return
-        websocket, tn_writer = conn['websocket'], conn['tnWriter']
+        websocket, tn_writer = conn["websocket"], conn["tnWriter"]
         await self._ensure_ready(port)
 
         try:
@@ -49,9 +51,7 @@ class TelnetProxy:
                 # XXX(pkoscik): why is this needed?
                 if not message:
                     break
-                logger.debug(
-                    f"WebSocket -> Telnet:{port} >>> {repr(message)}"
-                )
+                logger.debug(f"WebSocket -> Telnet:{port} >>> {repr(message)}")
                 tn_writer.write(message)
         except Exception as e:
             logger.error(f"handle_websocket_rx: error: {e}")
@@ -61,15 +61,13 @@ class TelnetProxy:
     async def handle_telnet_rx(self, port: int) -> None:
         if not (conn := self.connections.get(port)):
             return
-        websocket, tn_reader = conn['websocket'], conn['tnReader']
+        websocket, tn_reader = conn["websocket"], conn["tnReader"]
         await self._ensure_ready(port)
 
         try:
             message = await tn_reader.read(128)
             while len(message) > 0:
-                logger.debug(
-                    f"Telnet:{port} -> WebSocket >>> {repr(message)}"
-                )
+                logger.debug(f"Telnet:{port} -> WebSocket >>> {repr(message)}")
                 await websocket.send(message)
                 message = await tn_reader.read(128)
         except Exception as e:
