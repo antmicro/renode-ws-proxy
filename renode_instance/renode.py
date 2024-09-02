@@ -93,31 +93,46 @@ def machines(state: State, message):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: %s <LOGGING_PORT>" % sys.argv[0])
+        print("Usage: %s <LOGGING_PORT> [ENABLE_GUI]" % sys.argv[0])
         exit(1)
+
+    gui_enabled = False if len(sys.argv) < 3 else "true".startswith(sys.argv[2].lower())
+    if gui_enabled:
+        logger.info("RENODE_WS_PROXY_GUI_ENABLED is set, Renode will be run with GUI")
 
     logging_port = int(sys.argv[1])
     logger.debug(f"Starting pyrenode3 with logs on port {logging_port}")
     state = State(logging_port)
 
-    print(json.dumps({"rsp": "ready"}))
-    sys.stdout.flush()
+    if gui_enabled:
+        from pyrenode3.inits import XwtInit
+        from Antmicro.Renode.UI import CommandLineInterface
 
-    while state.running:
-        for line in sys.stdin:
-            response = {"err": "internal error: no response generated"}
-            try:
-                message = json.loads(line)
-                response = command[message["cmd"]](state, message)
-            except json.JSONDecodeError as e:
-                logger.error("Parsing error: %s" % str(e))
-                response = {"err": "parsing error: %s" % str(e)}
-            except Exception as e:
-                logger.error("Internal error %s" % str(e))
-                response = {"err": "internal error: %s" % str(e)}
-            finally:
-                print(json.dumps(response))
-                sys.stdout.flush()
+        XwtInit()
+        monitor = state._m.internal
+        shell = CommandLineInterface.PrepareXwtMonitorShell(monitor)
+        shell.Quitted += lambda: logging.debug("closing") or state.quit()
+        shell.Start(True)
 
-                if not state.running:
-                    break
+    else:
+        print(json.dumps({"rsp": "ready"}))
+        sys.stdout.flush()
+
+        while state.running:
+            for line in sys.stdin:
+                response = {"err": "internal error: no response generated"}
+                try:
+                    message = json.loads(line)
+                    response = command[message["cmd"]](state, message)
+                except json.JSONDecodeError as e:
+                    logger.error("Parsing error: %s" % str(e))
+                    response = {"err": "parsing error: %s" % str(e)}
+                except Exception as e:
+                    logger.error("Internal error %s" % str(e))
+                    response = {"err": "internal error: %s" % str(e)}
+                finally:
+                    print(json.dumps(response))
+                    sys.stdout.flush()
+
+                    if not state.running:
+                        break

@@ -35,23 +35,14 @@ class RenodeState:
         self.renode_path = Path(renode_path)
         assert self.renode_path.exists()
         self.logging_port = logging_port
-        if not gui_disabled:
-            logger.error("GUI mode is not yet implemented, defaulting to disabled")
-        self.gui_disabled = True
+        self.gui_disabled = gui_disabled
 
     def start(self, gui: bool, cwd: Path):
         if self.renode is not None and self.renode.poll() is None:
             logger.warning("Attempting to start Renode, but it is already running")
             return False
 
-        if gui:
-            logger.warning(
-                "Starting Renode with GUI isn't currently supported. Starting without GUI enabled"
-            )
-
-        args = [
-            str(self.logging_port),
-        ]
+        args = [str(self.logging_port), str(gui)]
 
         logger.debug(f"Loading Renode from {self.renode_path}")
         pyrenode3_env = {
@@ -90,7 +81,7 @@ class RenodeState:
         return False
 
     def execute(self, command: str, **kwargs):
-        if not self.renode:
+        if self.renode is None:
             logger.warning("Attempted to issue a request to Renode, but never started")
             return False, "Renode not started"
         if self.renode.poll() is not None:
