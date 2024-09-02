@@ -23,7 +23,7 @@ Run the proxy providing a path to the Renode binary, a working directory and a p
 renode-ws-proxy <RENODE_BINARY> <RENODE_EXECUTION_DIR> <PORT>
 ```
 
-You can force proxy to run Renode with GUI enabled, by exporting `RENODE_PROXY_GUI_ENABLED` environmental variable.
+You can enable proxy to run Renode with GUI, by exporting `RENODE_PROXY_GUI_ENABLED` environmental variable.
 
 ```sh
 export RENODE_PROXY_GUI_ENABLED=1

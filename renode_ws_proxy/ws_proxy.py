@@ -39,8 +39,9 @@ async def parse_proxy_request(request: str) -> str:
     def handle_spawn(mess, ret):
         software = mess.payload["name"]
         args = mess.payload.get("args", [])
+        gui = mess.payload.get("gui", False)
         if software == "renode":
-            if renode_state.start(args):
+            if renode_state.start(args, gui):
                 ret.status = _SUCCESS
         return ret
 
@@ -260,7 +261,7 @@ async def main():
 
     renode_gui_enabled = environ.get('RENODE_PROXY_GUI_ENABLED', False)
     if renode_gui_enabled:
-        logger.info('RENODE_PROXY_GUI_ENABLED is set, Renode will be run with GUI')
+        logger.info('RENODE_PROXY_GUI_ENABLED is set, Renode can be run with GUI')
 
     telnet_proxy = TelnetProxy()
     stream_proxy = StreamProxy()

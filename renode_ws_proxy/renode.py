@@ -21,13 +21,13 @@ class RenodeState:
         self.renode_cwd_path = renode_cwd_path
         self.gui_disabled = gui_disabled
 
-    def start(self, extra_args: list = []):
+    def start(self, extra_args: list = [], gui: bool = False):
         renode_args = [
             '-e', f'logN {self.telnet_base + 1}',
             '-e', f'path add @{self.renode_cwd_path}',
         ]
 
-        if self.gui_disabled:
+        if self.gui_disabled or not gui:
             # Disable everything GUI related, enable telnet
             renode_args.extend([
                 '-P', f'{self.telnet_base}',
