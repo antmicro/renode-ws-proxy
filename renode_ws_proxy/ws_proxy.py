@@ -261,9 +261,9 @@ async def main():
         usage()
         exit(1)
 
-    renode_gui_enabled = environ.get('RENODE_PROXY_GUI_ENABLED', False)
-    if renode_gui_enabled:
-        logger.info('RENODE_PROXY_GUI_ENABLED is set, Renode can be run with GUI')
+    renode_gui_disabled = environ.get('RENODE_PROXY_GUI_DISABLED', False)
+    if renode_gui_disabled:
+        logger.info('RENODE_PROXY_GUI_DISABLED is set, Renode cannot be run with GUI')
 
     telnet_proxy = TelnetProxy()
     stream_proxy = StreamProxy()
@@ -271,7 +271,7 @@ async def main():
     renode_state = RenodeState(
         renode_path=RENODE_PATH,
         renode_cwd_path=RENODE_CWD,
-        gui_disabled=not renode_gui_enabled
+        gui_disabled=renode_gui_disabled
     )
 
     # XXX: the `max_size` parameter is a temporary workaround for uploading large `elf` files!

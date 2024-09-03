@@ -23,13 +23,11 @@ Run the proxy providing a path to the Renode binary, a working directory and a p
 renode-ws-proxy <RENODE_BINARY> <RENODE_EXECUTION_DIR> <PORT>
 ```
 
-You can enable proxy to run Renode with GUI, by exporting `RENODE_PROXY_GUI_ENABLED` environmental variable.
+You can disable option to run Renode with GUI, by exporting `RENODE_PROXY_GUI_DISABLED` environmental variable.
 
 ```sh
-export RENODE_PROXY_GUI_ENABLED=1
+export RENODE_PROXY_GUI_DISABLED=1
 ```
-
-This will also disable creating telnet server in Renode.
 
 * Docker:
 
