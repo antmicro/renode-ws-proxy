@@ -2,6 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import os
+import signal
+import psutil
 import socket
 import logging
 import subprocess
@@ -11,6 +14,28 @@ from contextlib import closing
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("renode.py")
+
+# source https://psutil.readthedocs.io/en/latest/#kill-process-tree
+def kill_proc_tree(pid, sig=signal.SIGTERM, include_parent=True,
+                   timeout=None, on_terminate=None):
+    """Kill a process tree (including grandchildren) with signal
+    "sig" and return a (gone, still_alive) tuple.
+    "on_terminate", if specified, is a callback function which is
+    called as soon as a child terminates.
+    """
+    assert pid != os.getpid(), "won't kill myself"
+    parent = psutil.Process(pid)
+    children = parent.children(recursive=True)
+    if include_parent:
+        children.append(parent)
+    for p in children:
+        try:
+            p.send_signal(sig)
+        except psutil.NoSuchProcess:
+            pass
+    gone, alive = psutil.wait_procs(children, timeout=timeout,
+                                    callback=on_terminate)
+    return (gone, alive)
 
 
 class RenodeState:
@@ -22,6 +47,10 @@ class RenodeState:
         self.gui_disabled = gui_disabled
 
     def start(self, extra_args: list = [], gui: bool = False):
+        if self.renode_process and self.renode_process.poll() is None:
+            logger.warning("Attempted to start Renode without closing first")
+            return False
+
         renode_args = [
             '-e', f'logN {self.telnet_base + 1}',
             '-e', f'path add @{self.renode_cwd_path}',
@@ -53,15 +82,11 @@ class RenodeState:
             logger.warning("Requested to kill Renode, but self.renode_process is None")
             return False
 
-        for i in range(5):
-            if self.renode_process.poll() is not None:
-                self.renode_process = None
-                logger.info("Killed Renode process")
-                return True
+        (gone, alive) = kill_proc_tree(self.renode_process.pid)
+        logger.debug(f"Requested to kill Renode, killed {[p.pid for p in gone]}")
+        if alive:
+            logger.error(f"Failed to kill {[p.pid for p in alive]}")
+            return False
 
-            logger.info(f"Attempting to kill renode for the {i + 1} time! (PID: {self.renode_process.pid})")
-            self.renode_process.kill()
-            sleep(1)
-
-        logger.error(f"Failed to kill Renode process: {self.renode_process}")
-        return False
+        self.renode_process = None
+        return True

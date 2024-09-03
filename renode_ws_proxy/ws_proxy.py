@@ -174,6 +174,8 @@ async def protocol(websocket: WebSocketServerProtocol):
     except Exception as e:
         logger.error(f"Error: {e}")
         await websocket.close()
+    finally:
+        renode_state.kill()
 
 
 async def telnet(websocket: WebSocketServerProtocol, port: str):
