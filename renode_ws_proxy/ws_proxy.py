@@ -12,6 +12,7 @@ import logging
 import subprocess
 
 from base64 import standard_b64decode, standard_b64encode
+from typing import Optional
 
 from websockets.server import serve
 from websockets import WebSocketServerProtocol
@@ -32,9 +33,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger("ws_proxy.py")
 
 LOGLEVEL = logging.DEBUG
+RENODE_CWD = '/tmp/renode'
 
-
-async def parse_proxy_request(request: str) -> str:
+async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -> str:
     """ HELPER FUNCTIONS """
     def handle_spawn(mess, ret):
         software = mess.payload["name"]
@@ -165,15 +166,17 @@ async def parse_proxy_request(request: str) -> str:
     return ret.to_json()
 
 
-async def protocol(websocket: WebSocketServerProtocol):
+async def protocol(websocket: WebSocketServerProtocol, cwd: Optional[str] = None):
     handler = {
         '/proxy': parse_proxy_request,
     }[websocket.path]
 
+    filesystem_state = FileSystemState(RENODE_CWD if cwd is None else path.normpath(f'{RENODE_CWD}/{cwd}'))
+
     try:
         async for message in websocket:
             logger.debug(f"WebSocket protocol handler ({websocket.path}) received: {repr(message)}")
-            resp = await handler(message)
+            resp = await handler(message, filesystem_state)
             await websocket.send(resp)
             logger.debug(f"WebSocket protocol handler ({websocket.path}) responded: {repr(resp)}")
     except Exception as e:
@@ -231,6 +234,7 @@ async def websocket_handler(websocket: WebSocketServerProtocol, path: str) -> No
 path_handlers = [
     # WebSocket protocol
     (re.compile(r'^/proxy$'), protocol, []),
+    (re.compile(r'^/proxy/(?P<cwd>.+)$'), protocol, ['cwd']),
 
     # Telnet Proxy
     (re.compile(r'^/telnet/(?P<port>\w+)$'), telnet, ['port']),
@@ -248,7 +252,7 @@ def usage():
     print("    PORT: WebSocket server port (defaults to 21234)")
 
 async def main():
-    global telnet_proxy, stream_proxy, renode_state, filesystem_state
+    global telnet_proxy, stream_proxy, renode_state
 
     try:
         if sys.argv[1] in ['help', '--help', '-h']:
@@ -272,7 +276,6 @@ async def main():
 
     telnet_proxy = TelnetProxy()
     stream_proxy = StreamProxy()
-    filesystem_state = FileSystemState(RENODE_CWD)
     renode_state = RenodeState(
         renode_path=RENODE_PATH,
         renode_cwd_path=RENODE_CWD,

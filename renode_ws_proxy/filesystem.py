@@ -14,6 +14,7 @@ logger = logging.getLogger("filesystem.py")
 class FileSystemState:
     def __init__(self, path: str):
         self.cwd = path
+        os.makedirs(self.cwd, exist_ok=True)
 
     @staticmethod
     def path_info(cwd, path):
