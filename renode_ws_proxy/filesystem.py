@@ -84,6 +84,7 @@ class FileSystemState:
     def upload(self, path, data):
         try:
             full_path = os.path.normpath(f"{self.cwd}/{path}")
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
             with open(full_path, 'wb') as file:
                 file.write(data)
             return {"success": True, "path": full_path}
@@ -123,3 +124,11 @@ class FileSystemState:
             logger.error(f"Error copying file: {path} to {new_path} >>> {e}")
             return {"success": False, "error": str(e)}
 
+    def mkdir(self, path):
+        try:
+            full_path = os.path.normpath(f"{self.cwd}/{path}")
+            os.makedirs(full_path, exist_ok=True)
+            return {"success": True}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+        
