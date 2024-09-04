@@ -38,6 +38,16 @@ class FileSystemState:
 
         return {"success": True, "path": full_path}
 
+    def fetch_from_url(self, url, path='/'):
+        full_path = os.path.normpath(f"{self.cwd}/{path}")
+        try:
+            urllib.request.urlretrieve(url, full_path)
+        except Exception as e:
+            logger.error(f"Error downloading file ({url}): {e}")
+            return {"success": False, "error": str(e)}
+
+        return {"success": True, "path": full_path}
+
     def list(self, path):
         full_path = os.path.normpath(f"{self.cwd}/{path}")
         logger.error(full_path)
