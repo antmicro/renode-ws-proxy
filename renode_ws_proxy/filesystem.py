@@ -39,7 +39,8 @@ class FileSystemState:
         return {"success": True, "path": full_path}
 
     def fetch_from_url(self, url, path='/'):
-        full_path = os.path.normpath(f"{self.cwd}/{path}")
+        fname = os.path.basename(url)
+        full_path = os.path.normpath(f"{self.cwd}/{path}/{fname}")
         try:
             urllib.request.urlretrieve(url, full_path)
         except Exception as e:
