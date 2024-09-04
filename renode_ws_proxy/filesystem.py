@@ -22,9 +22,11 @@ class FileSystemState:
             "islink": os.path.islink(full_path)
         }
 
-    def list(self):
+    def list(self, path):
+        full_path = os.path.normpath(f"{self.cwd}/{path}")
+        logger.error(full_path)
         try:
-            return [self.path_info(self.cwd, p) for p in os.listdir(self.cwd)]
+            return [self.path_info(full_path, p) for p in os.listdir(full_path)]
         except Exception as e:
             logger.error(f"Error listing directory: {self.cwd} >>> {e}")
             return []

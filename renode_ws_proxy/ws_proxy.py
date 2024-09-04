@@ -105,7 +105,8 @@ async def parse_proxy_request(request: str) -> str:
         elif mess.action == "command":
             ret = handle_command(mess, ret)
         elif mess.action == "fs/list":
-            ret.data = filesystem_state.list()
+            path = mess.payload["args"][0]
+            ret.data = filesystem_state.list(path)
             ret.status = _SUCCESS if ret.data else _FAIL
         elif mess.action == "fs/stat":
             path = mess.payload["args"][0]
