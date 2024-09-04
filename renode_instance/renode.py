@@ -8,6 +8,8 @@ import sys
 import json
 import logging
 from typing import Iterable, cast
+import select
+import io
 
 from pyrenode3.wrappers import Emulation, Monitor
 
@@ -34,19 +36,73 @@ class Command:
 
 
 class State:
-    def __init__(self, logging_port: int):
+    def __init__(self, logging_port: int, gui_enabled: bool):
         self.running = True
 
         self.emulation = Emulation()
         self._m = Monitor()
+        self._m.internal.Quitted += lambda: logging.debug("closing") or self.quit()
+        self.shell = None
 
         self.execute(f"logNetwork {logging_port}")
 
+        if gui_enabled:
+            self._prepare_gui()
+        else:
+            from Antmicro.Renode.Peripherals.UART import UARTBackend
+            from Antmicro.Renode.Analyzers import LoggingUartAnalyzer
+
+            self.emulation.internal.BackendManager.SetPreferredAnalyzer(
+                UARTBackend, LoggingUartAnalyzer
+            )
+
     def quit(self):
+        if self.shell:
+            self.shell.Stop()
         self.running = False
 
     def execute(self, command: str):
         return self._m.execute(command)
+
+    def _prepare_gui(self):
+        from threading import Thread
+        from pyrenode3.inits import XwtInit
+        from Antmicro.Renode.UI import ConsoleWindowBackendAnalyzer
+        from Antmicro.Renode.UserInterface import ShellProvider
+        from AntShell.Terminal import NavigableTerminalEmulator
+        from Antmicro.Renode import Emulator
+        from AntShell import Prompt, Shell
+        from System import ConsoleColor
+
+        XwtInit()
+        monitor = self._m.internal
+
+        terminal = ConsoleWindowBackendAnalyzer(True)
+        io = terminal.IO
+
+        shell = ShellProvider.GenerateShell(monitor)
+        shell.Terminal = NavigableTerminalEmulator(io)
+
+        Emulator.BeforeExit += shell.Stop
+        terminal.Quitted += Emulator.Exit
+        terminal.Show()
+
+        monitor.Quitted += shell.Stop
+        shell.Quitted += Emulator.Exit
+
+        monitor.Interaction = shell.Writer
+        monitor.MachineChanged += lambda machine_name: cast(
+            Shell, self.shell
+        ).SetPrompt(
+            Prompt(f"({machine_name}) ", ConsoleColor.DarkYellow)
+            if machine_name
+            else None
+        )
+
+        self.shell = shell
+        self.shell.Quitted += lambda: logging.debug("closing") or self.quit()
+        t = Thread(target=self.shell.Start, args=[True])
+        t.start()
 
 
 def execute(state: State, message):
@@ -98,41 +154,36 @@ if __name__ == "__main__":
 
     gui_enabled = False if len(sys.argv) < 3 else "true".startswith(sys.argv[2].lower())
     if gui_enabled:
-        logger.info("RENODE_WS_PROXY_GUI_ENABLED is set, Renode will be run with GUI")
+        logger.info("GUI is enabled")
 
     logging_port = int(sys.argv[1])
     logger.debug(f"Starting pyrenode3 with logs on port {logging_port}")
-    state = State(logging_port)
+    state = State(logging_port, gui_enabled)
 
-    if gui_enabled:
-        from pyrenode3.inits import XwtInit
-        from Antmicro.Renode.UI import CommandLineInterface
+    print(json.dumps({"rsp": "ready"}))
+    sys.stdout.flush()
 
-        XwtInit()
-        monitor = state._m.internal
-        shell = CommandLineInterface.PrepareXwtMonitorShell(monitor)
-        shell.Quitted += lambda: logging.debug("closing") or state.quit()
-        shell.Start(True)
+    while state.running:
+        if not select.select([sys.stdin], [], [], 0.1)[0]:
+            continue
+        if b"\n" not in cast(io.BufferedReader, sys.stdin.buffer).peek(
+            io.DEFAULT_BUFFER_SIZE
+        ):
+            continue
+        line = sys.stdin.readline()
+        if not line:
+            continue
 
-    else:
-        print(json.dumps({"rsp": "ready"}))
-        sys.stdout.flush()
-
-        while state.running:
-            for line in sys.stdin:
-                response = {"err": "internal error: no response generated"}
-                try:
-                    message = json.loads(line)
-                    response = command[message["cmd"]](state, message)
-                except json.JSONDecodeError as e:
-                    logger.error("Parsing error: %s" % str(e))
-                    response = {"err": "parsing error: %s" % str(e)}
-                except Exception as e:
-                    logger.error("Internal error %s" % str(e))
-                    response = {"err": "internal error: %s" % str(e)}
-                finally:
-                    print(json.dumps(response))
-                    sys.stdout.flush()
-
-                    if not state.running:
-                        break
+        response = {"err": "internal error: no response generated"}
+        try:
+            message = json.loads(line)
+            response = command[message["cmd"]](state, message)
+        except json.JSONDecodeError as e:
+            logger.error("Parsing error: %s" % str(e))
+            response = {"err": "parsing error: %s" % str(e)}
+        except Exception as e:
+            logger.error("Internal error %s" % str(e))
+            response = {"err": "internal error: %s" % str(e)}
+        finally:
+            print(json.dumps(response))
+            sys.stdout.flush()
