@@ -145,6 +145,11 @@ async def parse_proxy_request(request: str) -> str:
             result = filesystem_state.copy(path, new_path)
             ret.data = result
             ret.status = _SUCCESS if result["success"] else _FAIL
+        elif mess.action == "fs/zip":
+            url = mess.payload["args"][0]
+            result = filesystem_state.download_extract_zip(url)
+            ret.data = result
+            ret.status = _SUCCESS if result["success"] else _FAIL
         else:
             raise ValueError(f"Operation {mess.action} not supported")
 

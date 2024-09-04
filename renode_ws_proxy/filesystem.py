@@ -5,6 +5,8 @@
 import os
 import shutil
 import logging
+import zipfile
+import urllib.request
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("filesystem.py")
@@ -21,6 +23,20 @@ class FileSystemState:
             "isfile": os.path.isfile(full_path), # If false, the path is a directory
             "islink": os.path.islink(full_path)
         }
+
+    def download_extract_zip(self, zip_url, path='/'):
+        temp_zip_path = f"{self.cwd}/temp.zip"
+        full_path = os.path.normpath(f"{self.cwd}/{path}")
+        try:
+            urllib.request.urlretrieve(zip_url, temp_zip_path)
+            with zipfile.ZipFile(temp_zip_path, 'r') as zip_ref:
+                zip_ref.extractall(full_path)
+            os.remove(temp_zip_path)
+        except Exception as e:
+            logger.error(f"Error downloading zip file ({zip_url}): {e}")
+            return {"success": False, "error": str(e)}
+
+        return {"success": True, "path": full_path}
 
     def list(self, path):
         full_path = os.path.normpath(f"{self.cwd}/{path}")
