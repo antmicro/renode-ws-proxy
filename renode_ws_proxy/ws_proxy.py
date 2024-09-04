@@ -174,16 +174,13 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
 
 
 async def protocol(websocket: WebSocketServerProtocol, cwd: Optional[str] = None):
-    handler = {
-        '/proxy': parse_proxy_request,
-    }[websocket.path]
 
     filesystem_state = FileSystemState(RENODE_CWD if cwd is None else path.normpath(f'{RENODE_CWD}/{cwd}'))
 
     try:
         async for message in websocket:
             logger.debug(f"WebSocket protocol handler ({websocket.path}) received: {repr(message)}")
-            resp = await handler(message, filesystem_state)
+            resp = await parse_proxy_request(message, filesystem_state)
             await websocket.send(resp)
             logger.debug(f"WebSocket protocol handler ({websocket.path}) responded: {repr(resp)}")
     except Exception as e:
