@@ -20,6 +20,8 @@ class StreamProxy:
         proc = await asyncio.create_subprocess_exec(
             f'{program}',
             '--interpreter=mi',
+            '--quiet',
+            '-ex', 'set source open off',
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
