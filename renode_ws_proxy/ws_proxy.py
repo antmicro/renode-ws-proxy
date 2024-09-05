@@ -10,6 +10,7 @@ import sys
 import asyncio
 import logging
 import subprocess
+import shutil
 
 from base64 import standard_b64decode, standard_b64encode
 from typing import Optional
@@ -208,6 +209,8 @@ async def telnet(websocket: WebSocketServerProtocol, port: str):
 
 
 async def stream(websocket: WebSocketServerProtocol, program: str):
+    program = program if program == 'None' else DEFAULT_GDB
+    logger.debug(f"stream: starting {program}")
     try:
         await stream_proxy.add_connection(program, websocket)
         asyncio.create_task(stream_proxy.handle_stdout_rx(program))
@@ -255,13 +258,14 @@ path_handlers = [
 def usage():
     print("renode-ws-proxy: WebSocket based server for managing remote Renode instance")
     print()
-    print("Usage:\nrenode-ws-proxy <RENODE_BINARY> <RENODE_EXECUTION_DIR> <PORT>")
+    print("Usage:\nrenode-ws-proxy <RENODE_BINARY> <RENODE_EXECUTION_DIR> <DEFAULT_GDB> <PORT>")
     print("    RENODE_BINARY: path/command to start Renode")
     print("    RENODE_EXECUTION_DIR: path/directory used as a Renode workspace")
+    print("    DEFAULT_GDB: path to gdb that will be used when no gdb is provided")
     print("    PORT: WebSocket server port (defaults to 21234)")
 
 async def main():
-    global telnet_proxy, stream_proxy, renode_state
+    global telnet_proxy, stream_proxy, renode_state, DEFAULT_GDB
 
     try:
         if sys.argv[1] in ['help', '--help', '-h']:
@@ -274,7 +278,11 @@ async def main():
         RENODE_CWD = sys.argv[2]
         if not path.isdir(RENODE_CWD):
             raise FileNotFoundError(f'{RENODE_CWD} not a directory! Exiting')
-        WS_PORT = sys.argv[3] if len(sys.argv) > 3 else 21234
+        DEFAULT_GDB = shutil.which(sys.argv[3])
+        if DEFAULT_GDB is None:
+            raise FileNotFoundError(f'{sys.argv[3]} not a file or cannot be executed! Exiting')
+        logger.debug(f'DEFAULT_GDB set to `{DEFAULT_GDB}`')
+        WS_PORT = sys.argv[4] if len(sys.argv) > 4 else 21234
     except IndexError:
         usage()
         exit(1)
