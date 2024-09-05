@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import re
 import shutil
 import logging
 import zipfile
@@ -24,6 +25,20 @@ class FileSystemState:
             "isfile": os.path.isfile(full_path), # If false, the path is a directory
             "islink": os.path.islink(full_path)
         }
+
+    def replace_analyzer(self, file, path='/'):
+        file = f"{self.cwd}/{file}"
+        with open(file, "r") as sources:
+            lines = sources.readlines()
+        with open(file, "w") as sources:
+            for line in lines:
+                try:
+                    newLine = re.sub(r"^showAnalyzer ([a-zA-Z0-9]+)", r'emulation CreateServerSocketTerminal 29172 "term"; connector Connect \1 term', line)
+                except Exception as e:
+                    logger.error(str(e))
+                sources.write(newLine)
+
+        return {"success": True}
 
     def download_extract_zip(self, zip_url, path='/'):
         temp_zip_path = f"{self.cwd}/temp.zip"

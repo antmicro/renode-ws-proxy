@@ -164,6 +164,11 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
             result = filesystem_state.download_extract_zip(url)
             ret.data = result
             ret.status = _SUCCESS if result["success"] else _FAIL
+        elif mess.action == "tweak/socket":
+            file = mess.payload["args"][0]
+            result = filesystem_state.replace_analyzer(file)
+            ret.data = result
+            ret.status = _SUCCESS if result["success"] else _FAIL
         else:
             raise ValueError(f"Operation {mess.action} not supported")
 
