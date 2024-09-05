@@ -35,6 +35,7 @@ logger = logging.getLogger("ws_proxy.py")
 
 LOGLEVEL = logging.DEBUG
 RENODE_CWD = '/tmp/renode'
+DEFAULT_GDB = 'gdb-multiarch'
 
 async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -> str:
     """ HELPER FUNCTIONS """
@@ -278,9 +279,10 @@ async def main():
         RENODE_CWD = sys.argv[2]
         if not path.isdir(RENODE_CWD):
             raise FileNotFoundError(f'{RENODE_CWD} not a directory! Exiting')
-        DEFAULT_GDB = shutil.which(sys.argv[3])
+        default_gdb = sys.argv[3] if len(sys.argv) > 3 else DEFAULT_GDB
+        DEFAULT_GDB = shutil.which(default_gdb)
         if DEFAULT_GDB is None:
-            raise FileNotFoundError(f'{sys.argv[3]} not a file or cannot be executed! Exiting')
+            raise FileNotFoundError(f'{default_gdb} not a file or cannot be executed! Exiting')
         logger.debug(f'DEFAULT_GDB set to `{DEFAULT_GDB}`')
         WS_PORT = sys.argv[4] if len(sys.argv) > 4 else 21234
     except IndexError:
