@@ -20,7 +20,7 @@ pip install .
 Run the proxy providing a path to the Renode binary, a working directory and a port to listen on (the plugin defaults to 21234)
 
 ```
-renode-ws-proxy <RENODE_BINARY> <RENODE_EXECUTION_DIR> <PORT>
+renode-ws-proxy <RENODE_BINARY> <RENODE_EXECUTION_DIR> <DEFAULT_GDB> <PORT>
 ```
 
 You can disable option to run Renode with GUI, by exporting `RENODE_PROXY_GUI_DISABLED` environmental variable.
