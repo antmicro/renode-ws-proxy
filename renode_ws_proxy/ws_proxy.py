@@ -35,8 +35,8 @@ logging.basicConfig(
 logger = logging.getLogger("ws_proxy.py")
 
 LOGLEVEL = logging.DEBUG
-RENODE_CWD = "/tmp/renode"
-DEFAULT_GDB = "gdb-multiarch"
+renode_cwd = "/tmp/renode"
+default_gdb = "gdb-multiarch"
 
 
 async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -> str:
@@ -265,7 +265,7 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
 
 
 async def protocol(websocket: ServerConnection, cwd: Optional[str] = None):
-    filesystem_state = FileSystemState(RENODE_CWD, path=cwd)
+    filesystem_state = FileSystemState(renode_cwd, path=cwd)
 
     try:
         while True:
@@ -297,7 +297,7 @@ async def telnet(websocket: ServerConnection, port_str: str):
 
 
 async def stream(websocket: ServerConnection, program: str):
-    program = program if program == "None" else DEFAULT_GDB
+    program = program if program == "None" else default_gdb
     logger.debug(f"stream: starting {program}")
     try:
         await stream_proxy.add_connection(program, websocket)
@@ -356,27 +356,27 @@ def usage():
 
 
 async def main():
-    global telnet_proxy, stream_proxy, renode_state, DEFAULT_GDB
+    global telnet_proxy, stream_proxy, renode_state, default_gdb, renode_cwd
 
     try:
         if sys.argv[1] in ["help", "--help", "-h"]:
             usage()
             exit(0)
 
-        RENODE_PATH = sys.argv[1]
-        if not path.isfile(RENODE_PATH):
-            raise FileNotFoundError(f"{RENODE_PATH} not a file! Exiting")
-        RENODE_CWD = sys.argv[2]
-        if not path.isdir(RENODE_CWD):
-            raise FileNotFoundError(f"{RENODE_CWD} not a directory! Exiting")
-        default_gdb_ = sys.argv[3] if len(sys.argv) > 3 else DEFAULT_GDB
+        renode_path = sys.argv[1]
+        if not path.isfile(renode_path):
+            raise FileNotFoundError(f"{renode_path} not a file! Exiting")
+        renode_cwd = sys.argv[2]
+        if not path.isdir(renode_cwd):
+            raise FileNotFoundError(f"{renode_cwd} not a directory! Exiting")
+        default_gdb_ = sys.argv[3] if len(sys.argv) > 3 else default_gdb
         default_gdb_ = shutil.which(default_gdb_)
         if default_gdb_ is None:
             raise FileNotFoundError(
                 f"{default_gdb_} not a file or cannot be executed! Exiting"
             )
-        DEFAULT_GDB = default_gdb_
-        logger.debug(f"DEFAULT_GDB set to `{DEFAULT_GDB}`")
+        default_gdb = default_gdb_
+        logger.debug(f"DEFAULT_GDB set to `{default_gdb}`")
         WS_PORT = int(sys.argv[4]) if len(sys.argv) > 4 else 21234
     except IndexError:
         usage()
@@ -394,8 +394,8 @@ async def main():
     telnet_proxy = TelnetProxy()
     stream_proxy = StreamProxy()
     renode_state = RenodeState(
-        renode_path=RENODE_PATH,
-        renode_cwd_path=RENODE_CWD,
+        renode_path=renode_path,
+        renode_cwd_path=renode_cwd,
         gui_disabled=renode_gui_disabled,
     )
 
