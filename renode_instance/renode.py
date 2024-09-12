@@ -14,6 +14,7 @@ import io
 from pyrenode3.wrappers import Emulation, Monitor
 
 from Antmicro.Renode.Peripherals.UART import IUART
+from AntShell import Shell
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -62,7 +63,12 @@ class State:
         self.running = False
 
     def execute(self, command: str):
-        return self._m.execute(command)
+        self._write_shell_command(command)
+
+        out, err = self._m.execute(command)
+
+        self._write_shell_output(out, err)
+        return out, err
 
     def _prepare_gui(self):
         from threading import Thread
@@ -71,7 +77,7 @@ class State:
         from Antmicro.Renode.UserInterface import ShellProvider
         from AntShell.Terminal import NavigableTerminalEmulator
         from Antmicro.Renode import Emulator
-        from AntShell import Prompt, Shell
+        from AntShell import Prompt
         from System import ConsoleColor
 
         XwtInit()
@@ -91,18 +97,49 @@ class State:
         shell.Quitted += Emulator.Exit
 
         monitor.Interaction = shell.Writer
-        monitor.MachineChanged += lambda machine_name: cast(
-            Shell, self.shell
-        ).SetPrompt(
-            Prompt(f"({machine_name}) ", ConsoleColor.DarkYellow)
-            if machine_name
-            else None
-        )
+
+        def prompt_change(machine_name):
+            self.prompt = (
+                Prompt(f"({machine_name}) ", ConsoleColor.DarkYellow)
+                if machine_name
+                else self.default_prompt
+            )
+            cast(Shell, self.shell).SetPrompt(self.prompt)
+
+        monitor.MachineChanged += prompt_change
 
         self.shell = shell
         self.shell.Quitted += lambda: logging.debug("closing") or self.quit()
+        self.default_prompt = Prompt("(monitor) ", ConsoleColor.DarkRed)
+        self.prompt = self.default_prompt
+        self.protocol_prompt = Prompt("(protocol) ", ConsoleColor.DarkRed)
+
         t = Thread(target=self.shell.Start, args=[True])
         t.start()
+
+    def _write_shell_command(self, command: str):
+        if self.shell is None:
+            return
+
+        self.shell.Terminal.NewLine()
+        self._write_prompt(self.protocol_prompt)
+        self.shell.Terminal.WriteRaw(command)
+        self.shell.Terminal.NewLine()
+
+    def _write_shell_output(self, out: str, err: str):
+        if self.shell is None:
+            return
+
+        if out:
+            self.shell.Terminal.WriteRaw(out)
+        if err:
+            self.shell.Writer.WriteError(err)
+
+        # NOTE: this assumes user has no active interaction with Monitor
+        self._write_prompt(self.prompt)
+
+    def _write_prompt(self, prompt):
+        cast(Shell, self.shell).Terminal.WriteRaw(prompt.Text, prompt.Color)
 
 
 def execute(state: State, message):
