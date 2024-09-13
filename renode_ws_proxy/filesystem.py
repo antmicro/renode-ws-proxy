@@ -39,19 +39,22 @@ class FileSystemState:
 
     def replace_analyzer(self, file):
         file = self.__resolve_path(file)
-        with file.open("r") as sources:
-            lines = sources.readlines()
-        with file.open("w") as sources:
-            for line in lines:
-                line = re.sub(
-                    r"^showAnalyzer ([a-zA-Z0-9]+)",
-                    r'emulation CreateServerSocketTerminal 29172 "term"; connector Connect \1 term',
-                    line,
-                )
-                # TODO: Handle write errors
-                sources.write(line)
+        try:
+            with file.open("r") as sources:
+                lines = sources.readlines()
+            with file.open("w") as sources:
+                for line in lines:
+                    line = re.sub(
+                        r"^showAnalyzer ([a-zA-Z0-9_.]+)",
+                        r'emulation CreateServerSocketTerminal 29172 "term"; connector Connect \1 term',
+                        line,
+                    )
+                    sources.write(line)
 
-        return {"success": True}
+            return {"success": True}
+        except Exception as e:
+            logger.error(f"Error replacing analyzers ({file}): {e}")
+            return {"success": False, "error": str(e)}
 
     def download_extract_zip(self, zip_url):
         temp_zip_path = self.__resolve_path("temp.zip")
