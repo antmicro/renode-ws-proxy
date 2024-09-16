@@ -1,5 +1,5 @@
 FROM antmicro/renode:nightly-dotnet
-RUN apt update && apt upgrade && apt install -y --no-install-recommends python3 python3-pip gdb-multiarch
+RUN apt update && apt upgrade -y && apt install -y --no-install-recommends python3 python3-pip gdb-multiarch
 
 COPY . .
 WORKDIR .
