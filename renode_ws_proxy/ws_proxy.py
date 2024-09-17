@@ -335,7 +335,7 @@ async def websocket_handler(websocket: ServerConnection) -> None:
 path_handlers = [
     # WebSocket protocol
     (re.compile(r"^/proxy$"), protocol, []),
-    (re.compile(r"^/proxy/(?P<cwd>.+)$"), protocol, ["cwd"]),
+    (re.compile(r"^/proxy/(?P<cwd>.*)$"), protocol, ["cwd"]),
     # Telnet Proxy
     (re.compile(r"^/telnet/(?P<port_str>\w+)$"), telnet, ["port_str"]),
     # Stream Proxy
