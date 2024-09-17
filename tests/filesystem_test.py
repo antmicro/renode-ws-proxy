@@ -80,7 +80,10 @@ def test_list(tmp_path: Path, tmp_fs: FileSystemState):
 
     result = tmp_fs.list("/")
 
-    result_files = [next(f for f in result if f["name"] == file) for file in test_files]
+    result_files = [
+        next(f for f in result.get("data", []) if f["name"] == file)
+        for file in test_files
+    ]
     assert len(result_files) == len(test_files)
     assert all(f is not None for f in result_files)
     assert all(f["isfile"] and not f["islink"] for f in result_files)

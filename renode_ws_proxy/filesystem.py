@@ -82,12 +82,16 @@ class FileSystemState:
 
     def list(self, path: str):
         full_path = self.__resolve_path(path)
-        logger.error(full_path)
         try:
-            return [self.__path_info(p, base=full_path) for p in os.listdir(full_path)]
+            return {
+                "success": True,
+                "data": [
+                    self.__path_info(p, base=full_path) for p in os.listdir(full_path)
+                ],
+            }
         except Exception as e:
             logger.error(f"Error listing directory: {self.cwd} >>> {e}")
-            return []
+            return {"success": False, "error": str(e)}
 
     def stat(self, path: str):
         try:

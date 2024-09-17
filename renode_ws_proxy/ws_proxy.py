@@ -122,8 +122,10 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
             ):
                 raise ValueError("Bad payload")
             path = mess.payload["args"][0]
-            ret.data = filesystem_state.list(path)
-            ret.status = _SUCCESS if ret.data else _FAIL
+            result = filesystem_state.list(path)
+            ret.error = result.get("error")
+            ret.data = result.get("data")
+            ret.status = _SUCCESS if result["success"] else _FAIL
         elif mess.action == "fs/mkdir":
             if (
                 mess.payload is None
