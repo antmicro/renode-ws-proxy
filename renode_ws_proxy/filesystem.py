@@ -22,7 +22,7 @@ class FileSystemState:
             self.cwd = self.__resolve_path(path)
         self.cwd.mkdir(parents=True, exist_ok=True)
 
-    def __resolve_path(self, path: str, *, base: Optional[Path] = None):
+    def __resolve_path(self, path: str | Path, *, base: Optional[Path] = None):
         if base is None:
             base = self.cwd
         path_ = Path(path)
@@ -164,3 +164,6 @@ class FileSystemState:
             return {"success": True}
         except Exception as e:
             return {"success": False, "error": str(e)}
+
+    def resolve_path(self, path: str | Path):
+        return self.__resolve_path(path)
