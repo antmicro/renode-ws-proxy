@@ -8,7 +8,7 @@ It is utilized by [Renode Extension](https://github.com/antmicro/renode-extensio
 
 ## Running the proxy
 
-* Locally:
+- Locally:
 
 Create a virtual environment and install this package:
 
@@ -36,7 +36,7 @@ You can disable option to run Renode with GUI, by exporting `RENODE_PROXY_GUI_DI
 export RENODE_PROXY_GUI_DISABLED=1
 ```
 
-* Docker:
+- Docker:
 
 ```
 docker build -t renode-ws-proxy .
