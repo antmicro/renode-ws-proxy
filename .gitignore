@@ -8,3 +8,5 @@ build/
 dist/
 *.dts
 *.repl
+node_modules
+dist
