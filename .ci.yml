@@ -3,31 +3,48 @@ stages:
   - test
 
 .common: &common
-  variables:
-    PIP_ROOT_USER_ACTION: ignore
-  image: 'python:3.12.5-bookworm'
   only:
     variables:
       - $CI_COMMIT_REF_NAME == "main"
       - $CI_PIPELINE_SOURCE == "merge_request"
+
+.common-python: &common_python
+  <<: *common
+  variables:
+    PIP_ROOT_USER_ACTION: ignore
+  image: 'python:3.12.5-bookworm'
   before_script:
     - pip install '.[dev]'
 
+.common-js: &common_js
+  <<: *common
+  image: 'node:20.17.0-bookworm'
+  before_script:
+    - npm install -g pnpm
+    - pnpm config set store-dir ~/.pnpm-store
+
 format:
   stage: build
-  <<: *common
+  <<: *common_python
   script:
     - ruff format --check
 
+build-js:
+  stage: build
+  <<: *common_js
+  script:
+    - pnpm install --frozen-lockfile
+    - pnpm run compile
+
 lint:
   stage: build
-  <<: *common
+  <<: *common_python
   script:
     - ruff check
     - pyright
 
 test:
   stage: test
-  <<: *common
+  <<: *common_python
   script:
     - pytest
