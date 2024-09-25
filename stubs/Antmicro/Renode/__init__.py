@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Protocol
 
 
 class Emulator:
@@ -6,3 +6,7 @@ class Emulator:
 
     @staticmethod
     def Exit(): ...
+
+
+class IEmulationElement(Protocol):
+    pass

@@ -1,4 +1,14 @@
-from typing import SupportsInt, overload
+from typing import Any, SupportsInt, overload
+
+
+class Decimal:
+    def __init__(self, value: float) -> None: ...
+    @staticmethod
+    def ToDouble(d: "Decimal") -> float: ...
+
+
+class Type:
+    def IsInstanceOfType(self, obj: Any) -> bool: ...
 
 
 # pyright: reportNoOverloadImplementation=none
