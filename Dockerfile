@@ -1,12 +1,15 @@
-FROM antmicro/renode:nightly-dotnet
-RUN apt update && apt upgrade -y && apt install -y --no-install-recommends python3 python3-pip gdb-multiarch
+FROM debian:bookworm
+RUN apt update && apt upgrade -y && apt install -y --no-install-recommends python3 python3-pip git gdb-multiarch wget
 
+WORKDIR /ws-proxy
 COPY . .
-WORKDIR .
 
-RUN pip3 install . 
-RUN mkdir /tmp/renode
+RUN pip3 install --break-system-packages .
+
+RUN wget https://builds.renode.io/renode-latest.linux-portable-dotnet.tar.gz -O /tmp/renode-package.tar.gz && \
+    mkdir -p /renode-portable /renode-workdir && \
+    tar -C /renode-portable --strip-components 1 -xf /tmp/renode-package.tar.gz && \
+    rm /tmp/renode-package.tar.gz
 
 EXPOSE 21234
-CMD ["renode-ws-proxy", "/opt/renode/renode", "/tmp/renode", "gdb-multiarch", "21234"]
-
+CMD ["renode-ws-proxy", "/renode-portable/renode", "/renode-workdir", "gdb-multiarch", "21234"]
