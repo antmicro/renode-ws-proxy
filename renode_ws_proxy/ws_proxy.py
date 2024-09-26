@@ -15,7 +15,7 @@ from typing import cast, Optional
 from pathlib import Path
 
 from base64 import standard_b64decode, standard_b64encode
-
+from sys import exit
 from websockets.asyncio.server import serve, ServerConnection
 
 from renode_ws_proxy.telnet_proxy import TelnetProxy

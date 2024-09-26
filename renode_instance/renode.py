@@ -11,6 +11,7 @@ from typing import Iterable, cast
 import select
 import io
 
+from sys import exit
 from pyrenode3.wrappers import Emulation, Monitor
 
 from Antmicro.Renode.Peripherals.UART import IUART
