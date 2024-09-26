@@ -68,7 +68,7 @@ def machines(state: State, message):
     return {"rsp": names}
 
 
-if __name__ == "__main__":
+def main():
     if len(sys.argv) < 2:
         print("Usage: %s <LOGGING_PORT> [ENABLE_GUI]" % sys.argv[0])
         exit(1)
@@ -108,3 +108,7 @@ if __name__ == "__main__":
         finally:
             print(json.dumps(response))
             sys.stdout.flush()
+
+
+if __name__ == "__main__":
+    main()

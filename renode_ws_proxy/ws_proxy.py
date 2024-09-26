@@ -16,6 +16,8 @@ from pathlib import Path
 
 from base64 import standard_b64decode, standard_b64encode
 from websockets.asyncio.server import serve, ServerConnection
+import sys
+from sys import exit
 
 from renode_ws_proxy.telnet_proxy import TelnetProxy
 from renode_ws_proxy.stream_proxy import StreamProxy
@@ -469,4 +471,15 @@ def run():
 
 
 if __name__ == "__main__":
+    # Workaround to enable support for bundlers like pyinstaller
+    if (
+        len(sys.argv) > 2
+        and sys.argv[1] == "-m"
+        and sys.argv[2] == "renode_instance.renode"
+    ):
+        from renode_instance.renode import main as renode_main
+
+        sys.argv[1:] = sys.argv[3:]
+        renode_main()
+        exit()
     run()
