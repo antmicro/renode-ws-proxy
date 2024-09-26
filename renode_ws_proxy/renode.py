@@ -18,11 +18,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger("renode.py")
 
-BASE_DIR = Path(__file__).parents[1]
-
-RENODE_PY = BASE_DIR / "renode_instance" / "renode.py"
-assert RENODE_PY.exists()
-
 
 class RenodeState:
     def __init__(
@@ -47,12 +42,12 @@ class RenodeState:
         logger.debug(f"Loading Renode from {self.renode_path}")
         pyrenode3_env = {
             **os.environ,
-            "PYRENODE_PKG": str(self.renode_path),
-            "PYRENODE_RUNTIME": "mono",  # TODO: make it configurable
+            "PYRENODE_BIN": str(self.renode_path),
+            "PYRENODE_RUNTIME": "coreclr",  # TODO: make it configurable
         }
 
         self.renode = subprocess.Popen(
-            [sys.executable, RENODE_PY] + args,
+            [sys.executable, "-m", "renode_instance.renode"] + args,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,

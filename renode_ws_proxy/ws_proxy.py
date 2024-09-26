@@ -385,9 +385,9 @@ def usage():
     print("renode-ws-proxy: WebSocket based server for managing remote Renode instance")
     print()
     print(
-        "Usage:\nrenode-ws-proxy <RENODE_PACKAGE> <RENODE_EXECUTION_DIR> <DEFAULT_GDB> <PORT>"
+        "Usage:\nrenode-ws-proxy <RENODE_BINARY> <RENODE_EXECUTION_DIR> <DEFAULT_GDB> <PORT>"
     )
-    print("    RENODE_PACKAGE: path to Renode mono package")
+    print("    RENODE_BINARY: path to Renode portable binary")
     print("    RENODE_EXECUTION_DIR: path/directory used as a Renode workspace")
     print("    DEFAULT_GDB: path to gdb that will be used when no gdb is provided")
     print("    PORT: WebSocket server port (defaults to 21234)")

@@ -23,10 +23,10 @@ Download Renode mono package:
 wget https://builds.renode.io/renode-latest.pkg.tar.xz
 ```
 
-Run the proxy providing a path to the Renode mono package, a working directory and a port to listen on (the plugin defaults to 21234)
+Run the proxy providing a path to the Renode portable binary, a working directory and a port to listen on (the plugin defaults to 21234)
 
 ```
-renode-ws-proxy <RENODE_PACKAGE> <RENODE_EXECUTION_DIR> <DEFAULT_GDB> <PORT>
+renode-ws-proxy <RENODE_BINARY> <RENODE_EXECUTION_DIR> <DEFAULT_GDB> <PORT>
 ```
 
 You can disable option to run Renode with GUI, by exporting `RENODE_PROXY_GUI_DISABLED` environmental variable.
