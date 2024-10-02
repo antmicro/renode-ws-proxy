@@ -17,10 +17,11 @@ python3 -m venv venv && . venv/bin/activate
 pip install .
 ```
 
-Download Renode mono package:
+Download and extract Renode Dotnet portable package:
 
 ```
-wget https://builds.renode.io/renode-latest.pkg.tar.xz
+wget https://builds.renode.io/renode-latest.linux-portable.tar.gz
+tar xf renode-latest.linux-portable.tar.gz
 ```
 
 Run the proxy providing a path to the Renode portable binary, a working directory and a port to listen on (the plugin defaults to 21234)
