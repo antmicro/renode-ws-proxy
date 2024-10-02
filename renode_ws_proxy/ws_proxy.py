@@ -340,7 +340,9 @@ async def stream(websocket: ServerConnection, program: str):
     try:
         await stream_proxy.add_connection(program, websocket)
         asyncio.create_task(stream_proxy.handle_stdout_rx(program))
-        asyncio.create_task(stream_proxy.handle_stderr_rx(program))
+        # TODO: Investigate if forwarding stderr is needed and if so, do so on a separate channel
+        #       For now everything works as expected without forwarding stderr
+        # asyncio.create_task(stream_proxy.handle_stderr_rx(program))
         await stream_proxy.handle_websocket_rx(program)
     except Exception as e:
         logger.error(f"Connection error: {e}")
