@@ -20,8 +20,8 @@ pip install .
 Download and extract Renode Dotnet portable package:
 
 ```
-wget https://builds.renode.io/renode-latest.linux-portable.tar.gz
-tar xf renode-latest.linux-portable.tar.gz
+wget https://builds.renode.io/renode-latest.linux-portable-dotnet.tar.gz
+tar xf renode-latest.linux-portable-dotnet.tar.gz
 ```
 
 Run the proxy providing a path to the Renode portable binary, a working directory and a port to listen on (the plugin defaults to 21234)
