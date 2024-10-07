@@ -386,8 +386,9 @@ def truncate(message, length):
     message = repr(message)
     return message[:300] + ' [...]' if len(message) > 300 else message
 
-def usage():
-    print("renode-ws-proxy: WebSocket based server for managing remote Renode instance")
+def usage(header = False):
+    if header:
+        print("renode-ws-proxy: WebSocket based server for managing remote Renode instance")
     print()
     print(
         "Usage:\nrenode-ws-proxy <RENODE_BINARY> <RENODE_EXECUTION_DIR> <DEFAULT_GDB> <PORT>"
@@ -403,7 +404,7 @@ async def main():
 
     try:
         if sys.argv[1] in ["help", "--help", "-h"]:
-            usage()
+            usage(True)
             exit(0)
 
         renode_path = sys.argv[1]
