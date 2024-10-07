@@ -132,7 +132,7 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
     """ PARSING """
     try:
         mess = Message.from_json(request)
-        logger.debug(f"Deserialized Message: {mess}")
+        logger.debug(f"Deserialized Message: {truncate(request, 300)}")
 
         if not mess.action:
             return ret.to_json()
@@ -310,10 +310,10 @@ async def protocol(websocket: ServerConnection, cwd: Optional[str] = None):
             message = await websocket.recv(decode=True)
             # NOTE: message will always be a string because we pass decode=True to recv
             message = cast(str, message)
-            logger.debug(f"WebSocket protocol handler received: {repr(message)}")
+            logger.debug(f"WebSocket protocol handler received: {truncate(message, 300)}")
             resp = await parse_proxy_request(message, filesystem_state)
             await websocket.send(resp)
-            logger.debug(f"WebSocket protocol handler responded: {repr(resp)}")
+            logger.debug(f"WebSocket protocol handler responded: {truncate(resp, 300)}")
     except Exception as e:
         logger.error(f"Error: {e}")
         await websocket.close()
@@ -382,6 +382,9 @@ path_handlers = [
     (re.compile(r"^/run/(?P<program>.*)$"), stream, ["program"]),
 ]
 
+def truncate(message, length):
+    message = repr(message)
+    return message[:300] + ' [...]' if len(message) > 300 else message
 
 def usage():
     print("renode-ws-proxy: WebSocket based server for managing remote Renode instance")
