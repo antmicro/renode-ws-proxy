@@ -33,7 +33,7 @@ class StreamProxy:
         if program in self.connections and (conn := self.connections.pop(program)):
             logger.info(f"Removing connector {program}")
             if proc := conn.get("process"):
-                proc.terminate()
+                proc.kill()
             if websocket := conn.get("websocket"):
                 asyncio.create_task(websocket.close())
 
