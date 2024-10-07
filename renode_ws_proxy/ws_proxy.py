@@ -413,16 +413,20 @@ async def main():
         renode_cwd = sys.argv[2]
         if not path.isdir(renode_cwd):
             raise FileNotFoundError(f"{renode_cwd} not a directory! Exiting")
-        default_gdb_ = sys.argv[3] if len(sys.argv) > 3 else default_gdb
-        default_gdb_ = shutil.which(default_gdb_)
-        if default_gdb_ is None:
+        default_gdb_candidate = sys.argv[3] if len(sys.argv) > 3 else default_gdb
+        default_gdb_lookup = shutil.which(default_gdb_candidate)
+        if default_gdb_lookup is None:
             raise FileNotFoundError(
-                f"{default_gdb_} not a file or cannot be executed! Exiting"
+                f"{default_gdb_candidate} is not a file or cannot be executed! Exiting"
             )
-        default_gdb = default_gdb_
+        default_gdb = default_gdb_lookup
         logger.debug(f"DEFAULT_GDB set to `{default_gdb}`")
         WS_PORT = int(sys.argv[4]) if len(sys.argv) > 4 else 21234
     except IndexError:
+        usage()
+        exit(1)
+    except FileNotFoundError as e:
+        print(e)
         usage()
         exit(1)
 
