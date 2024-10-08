@@ -387,7 +387,7 @@ path_handlers = [
 
 def truncate(message, length):
     message = repr(message)
-    return message[:300] + " [...]" if len(message) > 300 else message
+    return message[:length] + " [...]" if len(message) > length else message
 
 
 def usage(header=False):
