@@ -310,7 +310,9 @@ async def protocol(websocket: ServerConnection, cwd: Optional[str] = None):
             message = await websocket.recv(decode=True)
             # NOTE: message will always be a string because we pass decode=True to recv
             message = cast(str, message)
-            logger.debug(f"WebSocket protocol handler received: {truncate(message, 300)}")
+            logger.debug(
+                f"WebSocket protocol handler received: {truncate(message, 300)}"
+            )
             resp = await parse_proxy_request(message, filesystem_state)
             await websocket.send(resp)
             logger.debug(f"WebSocket protocol handler responded: {truncate(resp, 300)}")
@@ -382,13 +384,17 @@ path_handlers = [
     (re.compile(r"^/run/(?P<program>.*)$"), stream, ["program"]),
 ]
 
+
 def truncate(message, length):
     message = repr(message)
-    return message[:300] + ' [...]' if len(message) > 300 else message
+    return message[:300] + " [...]" if len(message) > 300 else message
 
-def usage(header = False):
+
+def usage(header=False):
     if header:
-        print("renode-ws-proxy: WebSocket based server for managing remote Renode instance")
+        print(
+            "renode-ws-proxy: WebSocket based server for managing remote Renode instance"
+        )
     print()
     print(
         "Usage:\nrenode-ws-proxy <RENODE_BINARY> <RENODE_EXECUTION_DIR> <DEFAULT_GDB> <PORT>"
