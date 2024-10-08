@@ -6,16 +6,15 @@
 
 from os import environ, path
 import re
-import sys
 import asyncio
 import logging
 import subprocess
 import shutil
+import argparse
 from typing import cast, Optional
 from pathlib import Path
 
 from base64 import standard_b64decode, standard_b64encode
-from sys import exit
 from websockets.asyncio.server import serve, ServerConnection
 
 from renode_ws_proxy.telnet_proxy import TelnetProxy
@@ -390,51 +389,52 @@ def truncate(message, length):
     return message[:length] + " [...]" if len(message) > length else message
 
 
-def usage(header=False):
-    if header:
-        print(
-            "renode-ws-proxy: WebSocket based server for managing remote Renode instance"
-        )
-    print()
-    print(
-        "Usage:\nrenode-ws-proxy <RENODE_BINARY> <RENODE_EXECUTION_DIR> <DEFAULT_GDB> <PORT>"
-    )
-    print("    RENODE_BINARY: path to Renode portable binary")
-    print("    RENODE_EXECUTION_DIR: path/directory used as a Renode workspace")
-    print("    DEFAULT_GDB: path to gdb that will be used when no gdb is provided")
-    print("    PORT: WebSocket server port (defaults to 21234)")
+def valid_program(path):
+    lookup = shutil.which(path)
+    if lookup is None:
+        raise argparse.ArgumentTypeError(f"{path} is not a file or cannot be executed")
+    return lookup
+
+
+def existing_directory(dir):
+    if not path.isdir(dir):
+        raise argparse.ArgumentTypeError(f"{dir} is not a directory")
+    return dir
 
 
 async def main():
     global telnet_proxy, stream_proxy, renode_state, default_gdb, renode_cwd
 
-    try:
-        if sys.argv[1] in ["help", "--help", "-h"]:
-            usage(True)
-            exit(0)
+    parser = argparse.ArgumentParser(
+        description="WebSocket based server for managing remote Renode instance"
+    )
+    parser.add_argument(
+        "renode_binary", type=valid_program, help="path to Renode portable binary"
+    )
+    parser.add_argument(
+        "renode_execution_dir",
+        type=existing_directory,
+        help="path/directory used as a Renode workspace",
+    )
+    parser.add_argument(
+        "-g",
+        "--gdb",
+        type=valid_program,
+        default=default_gdb,
+        help=f"path to gdb binary that will be used (defaults to {default_gdb})",
+    )
+    parser.add_argument(
+        "-p",
+        "--port",
+        type=int,
+        default=21234,
+        help="WebSocket server port (defaults to 21234)",
+    )
+    args = parser.parse_args()
 
-        renode_path = sys.argv[1]
-        if not path.isfile(renode_path):
-            raise FileNotFoundError(f"{renode_path} not a file! Exiting")
-        renode_cwd = sys.argv[2]
-        if not path.isdir(renode_cwd):
-            raise FileNotFoundError(f"{renode_cwd} not a directory! Exiting")
-        default_gdb_candidate = sys.argv[3] if len(sys.argv) > 3 else default_gdb
-        default_gdb_lookup = shutil.which(default_gdb_candidate)
-        if default_gdb_lookup is None:
-            raise FileNotFoundError(
-                f"{default_gdb_candidate} is not a file or cannot be executed! Exiting"
-            )
-        default_gdb = default_gdb_lookup
-        logger.debug(f"DEFAULT_GDB set to `{default_gdb}`")
-        WS_PORT = int(sys.argv[4]) if len(sys.argv) > 4 else 21234
-    except IndexError:
-        usage()
-        exit(1)
-    except FileNotFoundError as e:
-        print(e)
-        usage()
-        exit(1)
+    renode_path = args.renode_binary
+    renode_cwd = args.renode_execution_dir
+    default_gdb = args.gdb
 
     renode_gui_disabled = environ.get("RENODE_PROXY_GUI_DISABLED", None)
     renode_gui_disabled = (
@@ -453,7 +453,7 @@ async def main():
     )
 
     # XXX: the `max_size` parameter is a temporary workaround for uploading large `elf` files!
-    async with serve(websocket_handler, None, WS_PORT, max_size=100000000):
+    async with serve(websocket_handler, None, args.port, max_size=100000000):
         try:
             await asyncio.get_running_loop().create_future()
         except asyncio.exceptions.CancelledError:

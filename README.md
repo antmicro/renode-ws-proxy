@@ -27,7 +27,7 @@ tar xf renode-latest.linux-portable-dotnet.tar.gz
 Run the proxy providing a path to the Renode portable binary, a working directory and a port to listen on (the plugin defaults to 21234)
 
 ```
-renode-ws-proxy <RENODE_BINARY> <RENODE_EXECUTION_DIR> <DEFAULT_GDB> <PORT>
+renode-ws-proxy [-g GDB] [-p PORT] <renode_binary> <renode_execution_dir>
 ```
 
 You can disable option to run Renode with GUI, by exporting `RENODE_PROXY_GUI_DISABLED` environmental variable.
