@@ -113,9 +113,10 @@ def sensors(state: State, message):
 
     type = ISensor
     if "type" in message:
-        if message["type"] not in sensor_type:
-            return {"err": f"not supported 'type' value: '{message["type"]}'"}
-        type = sensor_type[message["type"]]
+        msg_type = message["type"]
+        if msg_type not in sensor_type:
+            return {"err": f"not supported 'type' value: '{msg_type}'"}
+        type = sensor_type[msg_type]
 
     instances = machine.internal.GetPeripheralsOfType[type]()
     instance_names = [
@@ -148,13 +149,10 @@ def sensor_set(state: State, message):
     if not machine:
         return {"err": "provided machine does not exist"}
     type = message["type"]
-    ok, perpheral = machine.internal.TryGetByName[sensor_type[type]](
-        message["peripheral"]
-    )
+    periph_name = message["peripheral"]
+    ok, perpheral = machine.internal.TryGetByName[sensor_type[type]](periph_name)
     if not ok:
-        return {
-            "err": f"peripheral {message["peripheral"]} implementing '{type}' not found"
-        }
+        return {"err": f"peripheral {periph_name} implementing '{type}' not found"}
     value = message["value"]
 
     sensor_setter[type](perpheral, value)
@@ -171,12 +169,11 @@ def sensor_get(state: State, message):
     if not machine:
         return {"err": "provided machine does not exist"}
     type = message["type"]
-    perpheral = machine.internal[message["peripheral"]]
+    periph_name = message["peripheral"]
+    perpheral = machine.internal[periph_name]
     sensor = csharp_as(sensor_type[type], perpheral)
 
     if sensor is None:
-        return {
-            "err": f"peripheral {message["peripheral"]} implementing '{type}' not found"
-        }
+        return {"err": f"peripheral {periph_name} implementing '{type}' not found"}
 
     return {"rsp": sensor_getter[type](sensor)}

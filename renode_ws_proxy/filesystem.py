@@ -9,7 +9,7 @@ import logging
 import zipfile
 import urllib.request
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("filesystem.py")
@@ -22,7 +22,7 @@ class FileSystemState:
             self.cwd = self.__resolve_path(path)
         self.cwd.mkdir(parents=True, exist_ok=True)
 
-    def __resolve_path(self, path: str | Path, *, base: Optional[Path] = None):
+    def __resolve_path(self, path: Union[str, Path], *, base: Optional[Path] = None):
         if base is None:
             base = self.cwd
         path_ = Path(path)
@@ -165,5 +165,5 @@ class FileSystemState:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def resolve_path(self, path: str | Path):
+    def resolve_path(self, path: Union[str, Path]):
         return self.__resolve_path(path)
