@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2024 Antmicro <www.antmicro.com>
+# Copyright (c) 2025 Antmicro <www.antmicro.com>
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -22,28 +22,31 @@ logger = logging.getLogger("ws_proxy_client.py")
 proxy_command_map = {
     # Proxy commands
     "sr": Message(
-        version=DATA_PROTOCOL_VERSION, action="spawn", payload={"name": "renode"}
+        version=DATA_PROTOCOL_VERSION, action="spawn", id=0, payload={"name": "renode"}
     ).to_json(),
     "kr": Message(
-        version=DATA_PROTOCOL_VERSION, action="kill", payload={"name": "renode"}
+        version=DATA_PROTOCOL_VERSION, action="kill", id=0, payload={"name": "renode"}
     ).to_json(),
     "sg": Message(
-        version=DATA_PROTOCOL_VERSION, action="spawn", payload={"name": "gdb"}
+        version=DATA_PROTOCOL_VERSION, action="spawn", id=0, payload={"name": "gdb"}
     ).to_json(),
     "kg": Message(
-        version=DATA_PROTOCOL_VERSION, action="kill", payload={"name": "gdb"}
+        version=DATA_PROTOCOL_VERSION, action="kill", id=0, payload={"name": "gdb"}
     ).to_json(),
     "gstr": Message(
-        version=DATA_PROTOCOL_VERSION, action="status", payload={"name": "renode"}
+        version=DATA_PROTOCOL_VERSION, action="status", id=0, payload={"name": "renode"}
     ).to_json(),
     "gsta": Message(
-        version=DATA_PROTOCOL_VERSION, action="status", payload={"name": "run"}
+        version=DATA_PROTOCOL_VERSION, action="status", id=0, payload={"name": "run"}
     ).to_json(),
     "gstt": Message(
-        version=DATA_PROTOCOL_VERSION, action="status", payload={"name": "telnet"}
+        version=DATA_PROTOCOL_VERSION, action="status", id=0, payload={"name": "telnet"}
     ).to_json(),
     "cmd": Message(
-        version=DATA_PROTOCOL_VERSION, action="command", payload={"name": "ls -lahv"}
+        version=DATA_PROTOCOL_VERSION,
+        action="command",
+        id=0,
+        payload={"name": "ls -lahv"},
     ).to_json(),
 }
 
@@ -58,25 +61,28 @@ telnet_command_map = {
 
 fs_command_map = {
     "ls": Message(
-        version=DATA_PROTOCOL_VERSION, action="list", payload={"args": []}
+        version=DATA_PROTOCOL_VERSION, action="list", id=0, payload={"args": []}
     ).to_json(),
     "mv": Message(
         version=DATA_PROTOCOL_VERSION,
         action="move",
+        id=0,
         payload={"args": ["fname1", "fname2"]},
     ).to_json(),
     "cp": Message(
         version=DATA_PROTOCOL_VERSION,
         action="copy",
+        id=0,
         payload={"args": ["fname1", "fname2"]},
     ).to_json(),
     "up": Message(
         version=DATA_PROTOCOL_VERSION,
         action="upld",
+        id=0,
         payload={"args": ["fname_up"], "data": "test"},
     ).to_json(),
     "dn": Message(
-        version=DATA_PROTOCOL_VERSION, action="dwnl", payload={"args": ["fname"]}
+        version=DATA_PROTOCOL_VERSION, action="dwnl", id=0, payload={"args": ["fname"]}
     ).to_json(),
 }
 

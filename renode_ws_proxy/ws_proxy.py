@@ -134,6 +134,7 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
     try:
         mess = Message.from_json(request)
         logger.debug(f"Deserialized Message: {truncate(request, 300)}")
+        ret.id = mess.id
 
         if not mess.action:
             return ret.to_json()

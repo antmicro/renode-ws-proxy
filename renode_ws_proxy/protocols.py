@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Antmicro <www.antmicro.com>
+# Copyright (c) 2025 Antmicro <www.antmicro.com>
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -16,6 +16,7 @@ _FAIL = "failure"
 class Message:
     version: str
     action: str
+    id: int
     payload: Optional[Dict[str, Any]] = field(default_factory=dict)
     status: Optional[str] = None
     error: Optional[str] = None
@@ -35,6 +36,7 @@ class Message:
 class Response:
     version: str
     status: str
+    id: Optional[int] = None
     data: Optional[Any] = field(default_factory=dict)
     error: Optional[str] = None
 
@@ -51,7 +53,7 @@ class Response:
 
 if __name__ == "__main__":
     json_str = Message(
-        version="1.0", action="create", payload={"id": 123, "name": "test"}
+        version="1.0", action="create", id=0, payload={"id": 123, "name": "test"}
     ).to_json()
     print("Serialized JSON:", json_str)
     msg_received = Message.from_json(json_str)
@@ -60,7 +62,7 @@ if __name__ == "__main__":
     print()
 
     resp_json_str = Response(
-        version="1.0", status="success", data={"id": 123, "name": "test"}
+        version="1.0", status="success", id=0, data={"id": 123, "name": "test"}
     ).to_json()
     print("Serialized Response JSON:", resp_json_str)
     resp_received = Response.from_json(resp_json_str)
