@@ -12,4 +12,4 @@ RUN wget https://builds.renode.io/renode-latest.linux-portable-dotnet.tar.gz -O 
     rm /tmp/renode-package.tar.gz
 
 EXPOSE 21234
-CMD ["renode-ws-proxy", "/renode-portable/renode", "/renode-workdir", "gdb-multiarch", "21234"]
+CMD ["renode-ws-proxy", "/renode-portable/renode", "/renode-workdir", "-g", "gdb-multiarch"]
