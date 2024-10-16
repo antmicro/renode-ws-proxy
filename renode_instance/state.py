@@ -6,6 +6,7 @@ from typing import cast
 from threading import Thread
 import logging
 
+from Antmicro.Renode.Utilities import SocketIOSource
 from pyrenode3.inits import XwtInit
 from pyrenode3.wrappers import Emulation, Monitor
 
@@ -14,7 +15,7 @@ from Antmicro.Renode import Emulator
 from Antmicro.Renode.UI import ConsoleWindowBackendAnalyzer
 from Antmicro.Renode.UserInterface import ShellProvider
 from AntShell import Prompt, Shell
-from AntShell.Terminal import NavigableTerminalEmulator
+from AntShell.Terminal import IOProvider, NavigableTerminalEmulator
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -33,15 +34,7 @@ class State:
 
         self.execute(f"logNetwork {logging_port}")
 
-        if gui_enabled:
-            self._prepare_gui()
-        else:
-            from Antmicro.Renode.Peripherals.UART import UARTBackend
-            from Antmicro.Renode.Analyzers import LoggingUartAnalyzer
-
-            self.emulation.internal.BackendManager.SetPreferredAnalyzer(
-                UARTBackend, LoggingUartAnalyzer
-            )
+        self.__prepare_monitor(gui_enabled, logging_port - 1)
 
     def quit(self):
         if self.shell:
@@ -56,19 +49,34 @@ class State:
         self._write_shell_output(out, err)
         return out, err
 
-    def _prepare_gui(self):
-        XwtInit()
+    def __prepare_monitor(self, gui_enabled: bool, port: int):
         monitor = self._m.internal
 
-        terminal = ConsoleWindowBackendAnalyzer(True)
-        io = terminal.IO
+        if gui_enabled:
+            XwtInit()
+            terminal = ConsoleWindowBackendAnalyzer(True)
+            io = terminal.IO
 
-        shell = ShellProvider.GenerateShell(monitor)
-        shell.Terminal = NavigableTerminalEmulator(io)
+            shell = ShellProvider.GenerateShell(monitor)
+            shell.Terminal = NavigableTerminalEmulator(io)
+
+            terminal.Quitted += Emulator.Exit
+            terminal.Show()
+        else:
+            from Antmicro.Renode.Peripherals.UART import UARTBackend
+            from Antmicro.Renode.Analyzers import LoggingUartAnalyzer
+
+            io = IOProvider()
+            io.Backend = SocketIOSource(port)
+
+            shell = ShellProvider.GenerateShell(monitor, True)
+            shell.Terminal = NavigableTerminalEmulator(io, True)
+
+            self.emulation.internal.BackendManager.SetPreferredAnalyzer(
+                UARTBackend, LoggingUartAnalyzer
+            )
 
         Emulator.BeforeExit += shell.Stop
-        terminal.Quitted += Emulator.Exit
-        terminal.Show()
 
         monitor.Quitted += shell.Stop
         shell.Quitted += Emulator.Exit
@@ -89,7 +97,7 @@ class State:
         self.shell.Quitted += lambda: logging.debug("closing") or self.quit()
         self.default_prompt = Prompt("(monitor) ", ConsoleColor.DarkRed)
         self.prompt = self.default_prompt
-        self.protocol_prompt = Prompt("(protocol) ", ConsoleColor.DarkRed)
+        self.protocol_prompt = Prompt("\r\n(protocol) ", ConsoleColor.DarkRed)
 
         t = Thread(target=self.shell.Start, args=[True])
         t.start()
@@ -98,7 +106,6 @@ class State:
         if self.shell is None:
             return
 
-        self.shell.Terminal.NewLine()
         self._write_prompt(self.protocol_prompt)
         self.shell.Terminal.WriteRaw(command)
         self.shell.Terminal.NewLine()
