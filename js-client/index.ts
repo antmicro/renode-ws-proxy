@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+import { z } from 'zod';
+import * as s from './schema';
 import WebSocket from 'isomorphic-ws';
 import { Buffer } from 'buffer';
 import { tryConnectWs, tryJsonParse } from './utils';
@@ -142,13 +144,16 @@ export class RenodeProxySession extends EventTarget {
     });
   }
 
-  public stopRenode(): Promise<any> {
-    return this.sendSessionRequest({
-      action: 'kill',
-      payload: {
-        name: 'renode',
+  public async stopRenode(): Promise<void> {
+    await this.sendSessionRequestTyped(
+      {
+        action: 'kill',
+        payload: {
+          name: 'renode',
+        },
       },
-    });
+      s.KillResponse,
+    );
   }
 
   public async downloadZipToFs(zipUrl: string) {
@@ -191,13 +196,16 @@ export class RenodeProxySession extends EventTarget {
     });
   }
 
-  public async listFiles(path: string): Promise<any[]> {
-    return this.sendSessionRequest({
-      action: 'fs/list',
-      payload: {
-        args: [path],
+  public async listFiles(path: string) {
+    return this.sendSessionRequestTyped(
+      {
+        action: 'fs/list',
+        payload: {
+          args: [path],
+        },
       },
-    });
+      s.FsListResponse,
+    );
   }
 
   public statFile(path: string): Promise<any> {
@@ -256,6 +264,35 @@ export class RenodeProxySession extends EventTarget {
 
   // *** Utilities ***
 
+  private async sendSessionRequestTyped<Res extends s.Response>(
+    req: PartialRequest,
+    resParser: z.ZodType<Res, any, object>,
+  ): Promise<ResData<Res>> {
+    const msg = {
+      ...req,
+      version: '0.0.1',
+    };
+
+    if (this.socketReady) {
+      const res = await this.sendInner(JSON.stringify(msg));
+      const resObj = JSON.parse(res);
+      const resParsed = await resParser.safeParseAsync(resObj);
+
+      if (!resParsed.success) {
+        throw resParsed.error;
+      }
+
+      const obj = resParsed.data as Res;
+      if (obj.status !== 'success') {
+        throw new Error(obj.error);
+      }
+
+      return obj.data;
+    } else {
+      throw new Error('Not connected');
+    }
+  }
+
   private async sendSessionRequest(req: {
     action: string;
     payload?: { [key: string]: any };
@@ -280,7 +317,7 @@ export class RenodeProxySession extends EventTarget {
     }
   }
 
-  private sendInner(msg: string): Promise<any> {
+  private sendInner(msg: string): Promise<string> {
     return new Promise(async (resolve, reject) => {
       console.log('[DEBUG] sending message to session', msg);
 
@@ -299,5 +336,13 @@ export class RenodeProxySession extends EventTarget {
     });
   }
 }
+
+interface PartialRequest {
+  action: string;
+  [key: string]: any;
+}
+
+// Helper to properly type response payload
+type ResData<T> = T extends { status: 'success'; data?: infer U } ? U : never;
 
 type RequestCallback = (response: any, error?: any) => void;
