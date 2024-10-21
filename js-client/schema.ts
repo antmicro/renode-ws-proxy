@@ -25,10 +25,48 @@ function resp<T extends ZodRawShape>(obj: T) {
   return OkResponse.extend(obj).or(ErrorResponse);
 }
 
+export const SpawnResponse = resp({
+  data: z.object({}),
+});
+export type SpawnResponse = z.infer<typeof SpawnResponse>;
+
 export const KillResponse = resp({
   data: z.object({}),
 });
 export type KillResponse = z.infer<typeof KillResponse>;
+
+export const ExecMonitorResponse = resp({});
+export type ExecMonitorResponse = z.infer<typeof ExecMonitorResponse>;
+
+export const GetUartsResponse = resp({
+  data: z.string().array(),
+});
+export type GetUartsResponse = z.infer<typeof GetUartsResponse>;
+
+export const GetMachinesResponse = resp({
+  data: z.string().array(),
+});
+export type GetMachinesResponse = z.infer<typeof GetMachinesResponse>;
+
+export const GetSensorsResponse = resp({
+  data: z
+    .object({
+      name: z.string(),
+      types: z.string().array(),
+    })
+    .array(),
+});
+export type GetSensorsResponse = z.infer<typeof GetSensorsResponse>;
+
+export const GetSensorResponse = resp({
+  data: z.unknown(),
+});
+export type GetSensorResponse = z.infer<typeof GetSensorResponse>;
+
+export const EmptyExecResponse = resp({
+  data: z.literal('ok'),
+});
+export type EmptyExecResponse = z.infer<typeof EmptyExecResponse>;
 
 export const FsListResponse = resp({
   data: z

@@ -6,7 +6,7 @@ import { z } from 'zod';
 import * as s from './schema';
 import WebSocket from 'isomorphic-ws';
 import { Buffer } from 'buffer';
-import { tryConnectWs, tryJsonParse } from './utils';
+import { tryConnectWs } from './utils';
 import {
   GetSensorValue,
   Sensor,
@@ -51,42 +51,54 @@ export class RenodeProxySession extends EventTarget {
     return state === WebSocket.OPEN;
   }
 
-  public startRenode(cwd?: string): Promise<any> {
-    return this.sendSessionRequest({
-      action: 'spawn',
-      payload: {
-        name: 'renode',
-        cwd,
+  public async startRenode(cwd?: string): Promise<void> {
+    await this.sendSessionRequestTyped(
+      {
+        action: 'spawn',
+        payload: {
+          name: 'renode',
+          cwd,
+        },
       },
-    });
+      s.SpawnResponse,
+    );
   }
 
-  public execMonitor(commands: string[]): Promise<any> {
-    return this.sendSessionRequest({
-      action: 'exec-monitor',
-      payload: {
-        commands,
+  public execMonitor(commands: string[]): Promise<void> {
+    return this.sendSessionRequestTyped(
+      {
+        action: 'exec-monitor',
+        payload: {
+          commands,
+        },
       },
-    });
+      s.ExecMonitorResponse,
+    );
   }
 
-  public getUarts(machine: string): Promise<string[]> {
-    return this.sendSessionRequest({
-      action: 'exec-renode',
-      payload: {
-        command: 'uarts',
-        args: { machine },
+  public getUarts(machine: string) {
+    return this.sendSessionRequestTyped(
+      {
+        action: 'exec-renode',
+        payload: {
+          command: 'uarts',
+          args: { machine },
+        },
       },
-    });
+      s.GetUartsResponse,
+    );
   }
 
-  public getMachines(): Promise<string[]> {
-    return this.sendSessionRequest({
-      action: 'exec-renode',
-      payload: {
-        command: 'machines',
+  public getMachines() {
+    return this.sendSessionRequestTyped(
+      {
+        action: 'exec-renode',
+        payload: {
+          command: 'machines',
+        },
       },
-    });
+      s.GetMachinesResponse,
+    );
   }
 
   public async getSensors(
@@ -94,15 +106,18 @@ export class RenodeProxySession extends EventTarget {
     type?: SensorType,
   ): Promise<Sensor[]> {
     let sensorType = type === undefined ? {} : { type };
-    let result = await this.sendSessionRequest({
-      action: 'exec-renode',
-      payload: {
-        command: 'sensors',
-        args: { machine, ...sensorType },
+    let result = await this.sendSessionRequestTyped(
+      {
+        action: 'exec-renode',
+        payload: {
+          command: 'sensors',
+          args: { machine, ...sensorType },
+        },
       },
-    });
+      s.GetSensorsResponse,
+    );
     return result.map(
-      (entry: { name: string; types: string[] }) =>
+      entry =>
         new Sensor(
           machine,
           entry.name,
@@ -115,33 +130,39 @@ export class RenodeProxySession extends EventTarget {
     sensor: Sensor,
     type: SensorType,
   ): Promise<SensorValue> {
-    const result = await this.sendSessionRequest({
-      action: 'exec-renode',
-      payload: {
-        command: 'sensor-get',
-        args: { machine: sensor.machine, peripheral: sensor.name, type },
+    const result = await this.sendSessionRequestTyped(
+      {
+        action: 'exec-renode',
+        payload: {
+          command: 'sensor-get',
+          args: { machine: sensor.machine, peripheral: sensor.name, type },
+        },
       },
-    });
+      s.GetSensorResponse,
+    );
     return GetSensorValue(type, result);
   }
 
-  public setSensorValue(
+  public async setSensorValue(
     sensor: Sensor,
     type: SensorType,
     value: SensorValue,
   ): Promise<void> {
-    return this.sendSessionRequest({
-      action: 'exec-renode',
-      payload: {
-        command: 'sensor-set',
-        args: {
-          machine: sensor.machine,
-          peripheral: sensor.name,
-          type,
-          value: value.sample,
+    await this.sendSessionRequestTyped(
+      {
+        action: 'exec-renode',
+        payload: {
+          command: 'sensor-set',
+          args: {
+            machine: sensor.machine,
+            peripheral: sensor.name,
+            type,
+            value: value.sample,
+          },
         },
       },
-    });
+      s.EmptyExecResponse,
+    );
   }
 
   public async stopRenode(): Promise<void> {
@@ -308,30 +329,6 @@ export class RenodeProxySession extends EventTarget {
 
       const obj = resParsed.data as Res;
       if (obj.status !== 'success') {
-        throw new Error(obj.error);
-      }
-
-      return obj.data;
-    } else {
-      throw new Error('Not connected');
-    }
-  }
-
-  private async sendSessionRequest(req: {
-    action: string;
-    payload?: { [key: string]: any };
-  }): Promise<any> {
-    const msg = {
-      ...req,
-      version: '0.0.1',
-    };
-
-    if (this.socketReady) {
-      const res = await this.sendInner(JSON.stringify(msg));
-      const obj: any = tryJsonParse(res);
-      console.log('[DEBUG] got answer from session', obj);
-
-      if (!obj?.status || obj.status !== 'success') {
         throw new Error(obj.error);
       }
 
