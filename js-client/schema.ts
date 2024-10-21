@@ -62,3 +62,38 @@ export const FsUpldResponse = resp({
   }),
 });
 export type FsUpldResponse = z.infer<typeof FsUpldResponse>;
+
+export const FsRemoveResponse = resp({
+  data: z.object({
+    path: z.string(),
+  }),
+});
+export type FsRemoveResponse = z.infer<typeof FsRemoveResponse>;
+
+export const FsMkdirResponse = resp({
+  data: z.object({}),
+});
+export type FsMkdirResponse = z.infer<typeof FsMkdirResponse>;
+
+export const FsZipResponse = resp({
+  data: z.object({
+    path: z.string(),
+  }),
+});
+export type FsZipResponse = z.infer<typeof FsZipResponse>;
+
+export const FsMoveResponse = resp({
+  data: z.object({
+    from: z.string(),
+    to: z.string(),
+  }),
+});
+export type FsMoveResponse = z.infer<typeof FsMoveResponse>;
+
+export const FsCopyResponse = resp({
+  data: z.object({
+    from: z.string(),
+    to: z.string(),
+  }),
+});
+export type FsCopyResponse = z.infer<typeof FsCopyResponse>;

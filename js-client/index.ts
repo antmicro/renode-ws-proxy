@@ -157,43 +157,55 @@ export class RenodeProxySession extends EventTarget {
   }
 
   public async downloadZipToFs(zipUrl: string) {
-    return this.sendSessionRequest({
-      action: 'fs/zip',
-      payload: {
-        args: [zipUrl],
+    return this.sendSessionRequestTyped(
+      {
+        action: 'fs/zip',
+        payload: {
+          args: [zipUrl],
+        },
       },
-    });
+      s.FsZipResponse,
+    );
   }
 
   public async downloadFile(path: string): Promise<Uint8Array> {
-    const encoded = await this.sendSessionRequest({
-      action: 'fs/dwnl',
-      payload: {
-        args: [path],
+    const encoded = await this.sendSessionRequestTyped(
+      {
+        action: 'fs/dwnl',
+        payload: {
+          args: [path],
+        },
       },
-    });
+      s.FsDwnlResponse,
+    );
     return Buffer.from(encoded, 'base64');
   }
 
-  public createDirectory(path: string): Promise<void> {
-    return this.sendSessionRequest({
-      action: 'fs/mkdir',
-      payload: {
-        args: [path],
+  public async createDirectory(path: string): Promise<void> {
+    await this.sendSessionRequestTyped(
+      {
+        action: 'fs/mkdir',
+        payload: {
+          args: [path],
+        },
       },
-    });
+      s.FsMkdirResponse,
+    );
   }
 
-  public sendFile(path: string, contents: Uint8Array): Promise<any> {
+  public sendFile(path: string, contents: Uint8Array) {
     const buf = Buffer.from(contents);
     const enc = buf.toString('base64');
-    return this.sendSessionRequest({
-      action: 'fs/upld',
-      payload: {
-        args: [path],
-        data: enc,
+    return this.sendSessionRequestTyped(
+      {
+        action: 'fs/upld',
+        payload: {
+          args: [path],
+          data: enc,
+        },
       },
-    });
+      s.FsUpldResponse,
+    );
   }
 
   public async listFiles(path: string) {
@@ -208,36 +220,48 @@ export class RenodeProxySession extends EventTarget {
     );
   }
 
-  public statFile(path: string): Promise<any> {
-    return this.sendSessionRequest({
-      action: 'fs/stat',
-      payload: {
-        args: [path],
+  public statFile(path: string) {
+    return this.sendSessionRequestTyped(
+      {
+        action: 'fs/stat',
+        payload: {
+          args: [path],
+        },
       },
-    });
+      s.FsStatResponse,
+    );
   }
 
-  public removeFile(path: string): Promise<any> {
-    return this.sendSessionRequest({
-      action: 'fs/remove',
-      payload: {
-        args: [path],
+  public removeFile(path: string) {
+    return this.sendSessionRequestTyped(
+      {
+        action: 'fs/remove',
+        payload: {
+          args: [path],
+        },
       },
-    });
+      s.FsRemoveResponse,
+    );
   }
 
-  public moveFile(from: string, to: string): Promise<any> {
-    return this.sendSessionRequest({
-      action: 'fs/move',
-      payload: { args: [from, to] },
-    });
+  public moveFile(from: string, to: string) {
+    return this.sendSessionRequestTyped(
+      {
+        action: 'fs/move',
+        payload: { args: [from, to] },
+      },
+      s.FsMoveResponse,
+    );
   }
 
-  public copyFile(from: string, to: string): Promise<any> {
-    return this.sendSessionRequest({
-      action: 'fs/copy',
-      payload: { args: [from, to] },
-    });
+  public copyFile(from: string, to: string) {
+    return this.sendSessionRequestTyped(
+      {
+        action: 'fs/copy',
+        payload: { args: [from, to] },
+      },
+      s.FsCopyResponse,
+    );
   }
 
   public dispose() {
