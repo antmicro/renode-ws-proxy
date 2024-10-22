@@ -18,7 +18,7 @@ from base64 import standard_b64decode, standard_b64encode
 from websockets.asyncio.server import serve, ServerConnection
 import sys
 from sys import exit
-
+from multiprocessing import freeze_support
 from renode_ws_proxy.telnet_proxy import TelnetProxy
 from renode_ws_proxy.stream_proxy import StreamProxy
 from renode_ws_proxy.filesystem import FileSystemState
@@ -483,6 +483,8 @@ def run():
 
 
 if __name__ == "__main__":
+    # Enable multiprocessing for frozen executables
+    freeze_support()
     # Workaround to enable support for bundlers like pyinstaller
     if (
         len(sys.argv) > 2

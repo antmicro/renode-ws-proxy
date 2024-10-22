@@ -8,9 +8,9 @@ from typing import IO, Optional, cast
 import logging
 import subprocess
 import json
-import time
+import multiprocessing
+from multiprocessing.connection import Connection
 import io
-import select
 from pathlib import Path
 
 logging.basicConfig(
@@ -100,25 +100,29 @@ class RenodeState:
 
     def _renode_read(self, timeout: Optional[int] = None):
         assert self.renode
+        (recv, send) = multiprocessing.Pipe(duplex=False)
+        if timeout is None:
+            self._renode_read_blocking(send)
+            return recv.recv()
+        # Do the blocking readline in a thread to support timeouts
+        # Thread safe since we do not access any self() method while waiting
+        # Have to store the output in a mutable variable since there is no simple way to access a threads return value
+        read_task = multiprocessing.Process(target=self._renode_read_blocking(send))
+        read_task.daemon = True
+        read_task.start()
+        if recv.poll(timeout=timeout):
+            # recived data
+            return recv.recv()
+        else:
+            # Timeout reached
+            read_task.terminate()
+            return None
+
+    def _renode_read_blocking(self, pipe: Connection):
+        assert self.renode
         # NOTE: stdout is guaranteed to be present because we only spawn Renode with stdout set to PIPE
         stdout = cast(io.BufferedReader, self.renode.stdout)
-        if timeout:
-            line_exists = False
-            start = time.time()
-            select_timeout = timeout
-            while not line_exists and select_timeout > 0:
-                data_available = bool(
-                    select.select([stdout], [], [], select_timeout)[0]
-                )
-                select_timeout = timeout - (time.time() - start)
-                if not data_available:
-                    continue
-                if b"\n" in stdout.peek(io.DEFAULT_BUFFER_SIZE):
-                    line_exists = True
-            if not line_exists:
-                return None
-
-        return json.loads(stdout.readline())
+        pipe.send(json.loads(stdout.readline()))
 
     def _renode_write(self, request):
         assert self.renode

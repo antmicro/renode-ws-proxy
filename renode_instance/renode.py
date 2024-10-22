@@ -9,8 +9,6 @@ from sys import exit
 import json
 import logging
 from typing import Iterable, cast
-import select
-import io
 
 import pyrenode3  # noqa: F401
 from Antmicro.Renode.Peripherals.UART import IUART
@@ -94,12 +92,6 @@ def main():
     sys.stdout.flush()
 
     while state.running:
-        if not select.select([sys.stdin], [], [], 0.1)[0]:
-            continue
-        if b"\n" not in cast(io.BufferedReader, sys.stdin.buffer).peek(
-            io.DEFAULT_BUFFER_SIZE
-        ):
-            continue
         line = sys.stdin.readline()
         if not line:
             continue
