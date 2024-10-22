@@ -15,6 +15,14 @@ import {
   SensorValue,
 } from './sensor';
 
+export {
+  Sensor,
+  SensorType,
+  SensorTypeFromString,
+  GetSensorValue,
+  SensorValue,
+};
+
 class SocketClosedEvent extends Event {
   constructor() {
     super('close');
