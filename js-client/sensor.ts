@@ -2,13 +2,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-import { assert } from './utils';
+import { z } from 'zod';
 import { Peripheral } from './peripheral';
-
-const MAX_UINT = Math.pow(2, 32) - 1;
-const MAX_INT = Math.pow(2, 31) - 1;
-const MIN_INT = -Math.pow(2, 31);
-const MAX_ULONG = Math.pow(2, 64) - 1;
 
 export enum SensorType {
   Temperature = 'temperature',
@@ -27,334 +22,211 @@ export function SensorTypeFromString(value: string): SensorType | undefined {
     : undefined;
 }
 
-export function GetSensorValue(
+function sensorConstructorForType(
   type: SensorType,
-  value: any,
-  pretty: boolean = false,
-): SensorValue {
-  const getValueMethod = (ValueClass: any, valueArgs: any[]) =>
-    pretty ? ValueClass.FromValue(...valueArgs) : new ValueClass(...valueArgs);
+): (sample: unknown, pretty: boolean) => SensorValue {
+  const mapping = {
+    [SensorType.Temperature]: TemperatureValue,
+    [SensorType.Acceleration]: AccelerationValue,
+    [SensorType.AngularRate]: AngularRateValue,
+    [SensorType.Voltage]: VoltageValue,
+    [SensorType.ECG]: ECGValue,
+    [SensorType.Humidity]: HumidityValue,
+    [SensorType.Pressure]: PressureValue,
+    [SensorType.MagneticFluxDensity]: MagneticFluxDensityValue,
+  };
 
-  switch (type) {
-    case SensorType.Temperature:
-      return getValueMethod(TemperatureValue, [value]);
-    case SensorType.Acceleration:
-      return getValueMethod(AccelerationValue, [value.x, value.y, value.z]);
-    case SensorType.AngularRate:
-      return getValueMethod(AngularRateValue, [value.x, value.y, value.z]);
-    case SensorType.Voltage:
-      return getValueMethod(VoltageValue, [value]);
-    case SensorType.ECG:
-      return getValueMethod(ECGValue, [value]);
-    case SensorType.Humidity:
-      return getValueMethod(HumidityValue, [value]);
-    case SensorType.Pressure:
-      return getValueMethod(PressureValue, [value]);
-    case SensorType.MagneticFluxDensity:
-      return getValueMethod(MagneticFluxDensityValue, [
-        value.x,
-        value.y,
-        value.z,
-      ]);
-    default:
-      throw Error('Invalid sensor type');
-  }
+  const ctor = mapping[type];
+  return ctor.fromValueChecked.bind(ctor);
 }
 
-export abstract class SensorValue {
-  protected constructor(
-    private _sample: any,
-    validate: boolean = true,
-  ) {
-    if (validate) {
-      this.assertValidate(_sample);
-    }
-  }
-
-  public get sample(): any {
-    return this._sample;
-  }
-
-  public abstract get value(): any;
-
-  public abstract get unit(): string;
-
-  public abstract validate(sample: any): boolean;
-
-  protected assertValidate(sample: any) {
-    if (!this.validate(sample)) {
-      throw Error('Invalid sample value');
-    }
-  }
+export function GetSensorValue(
+  type: SensorType,
+  value: unknown,
+  pretty: boolean = false,
+): SensorValue {
+  return sensorConstructorForType(type)(value, pretty);
 }
 
 export class Sensor extends Peripheral {
   public constructor(
     machine: string,
     name: string,
-    private _types: SensorType[],
+    public readonly types: SensorType[],
   ) {
     super(machine, name);
   }
+}
 
-  public get types(): SensorType[] {
-    return this._types;
+export abstract class SensorValue<SampleType = unknown> {
+  public abstract readonly sample: SampleType;
+  public abstract readonly unit: string;
+  public abstract get value(): SampleType;
+
+  public static fromValueChecked(
+    _sample: unknown,
+    _pretty: boolean,
+  ): SensorValue {
+    throw new Error('Cannot construct abstract class SensorValue');
   }
 }
 
-abstract class SensorScalarValue extends SensorValue {
+const ScalarSampleValue = z.number();
+export type ScalarSampleValue = z.infer<typeof ScalarSampleValue>;
+
+const Vec3SampleValue = z.object({
+  x: z.number(),
+  y: z.number(),
+  z: z.number(),
+});
+export type Vec3SampleValue = z.infer<typeof Vec3SampleValue>;
+
+function vec3Map(
+  v: Vec3SampleValue,
+  fun: (value: number) => number,
+): Vec3SampleValue {
+  return {
+    x: fun(v.x),
+    y: fun(v.y),
+    z: fun(v.z),
+  };
+}
+
+class ScalarSensorValue extends SensorValue<ScalarSampleValue> {
   protected constructor(
-    sample: number,
-    protected min: number,
-    protected max: number,
-    validate: boolean = true,
+    readonly sample: ScalarSampleValue,
+    readonly unit: string,
   ) {
-    assert(Number.isInteger(min), 'min is not an integer');
-    assert(Number.isInteger(max), 'max is not an integer');
-    super(sample, false);
-    if (validate) {
-      this.assertValidate(sample);
-    }
+    super();
   }
 
-  public abstract get value(): number;
-
-  public validate(sample: number): boolean {
-    return Number.isInteger(sample) && this.min <= sample && sample <= this.max;
-  }
-}
-
-class Sample3D {
-  public constructor(
-    private x: number,
-    private y: number,
-    private z: number,
-  ) {}
-
-  public get X() {
-    return this.x;
+  override get value() {
+    return this.sample;
   }
 
-  public get Y() {
-    return this.y;
+  public static fromValue(
+    _sample: ScalarSampleValue,
+    _pretty: boolean,
+  ): ScalarSensorValue {
+    throw new Error('Cannot construct abstract class ScalarSensorValue');
   }
 
-  public get Z() {
-    return this.z;
-  }
-
-  public toTriple(): [number, number, number] {
-    return [this.X, this.Y, this.Z];
-  }
-
-  public mapValues(f: (v: number) => number): Sample3D {
-    return new Sample3D(f(this.X), f(this.Y), f(this.Z));
+  public static fromValueChecked(sample: unknown, pretty: boolean) {
+    const sampleChecked = ScalarSampleValue.parse(sample);
+    return this.fromValue(sampleChecked, pretty);
   }
 }
 
-abstract class Sensor32BitTripleValue extends SensorValue {
-  protected constructor(sample: Sample3D);
-  protected constructor(x: number, y: number, z: number);
-  protected constructor(...args: any[]);
-  protected constructor(...args: any[]) {
-    if (args.length === 1) {
-      super(args[0]);
-    } else if (args.length === 3) {
-      super(new Sample3D(args[0], args[1], args[2]));
-    } else {
-      throw Error();
-    }
+class Vec3SensorValue extends SensorValue<Vec3SampleValue> {
+  protected constructor(
+    readonly sample: Vec3SampleValue,
+    readonly unit: string,
+  ) {
+    super();
   }
 
-  public abstract get value(): Sample3D;
+  override get value() {
+    return this.sample;
+  }
 
-  public abstract get unit(): string;
+  public static fromValue(
+    _sample: Vec3SampleValue,
+    _pretty: boolean,
+  ): Vec3SensorValue {
+    throw new Error('Cannot construct abstract class ScalarSensorValue');
+  }
 
-  public validate(sample: Sample3D): boolean {
-    return sample
-      .toTriple()
-      .every(v => Number.isInteger(v) && MIN_INT <= v && v < MAX_INT);
+  public static fromValueChecked(sample: unknown, pretty: boolean) {
+    const sampleChecked = Vec3SampleValue.parse(sample);
+    return this.fromValue(sampleChecked, pretty);
   }
 }
 
-export class TemperatureValue extends SensorScalarValue {
-  public constructor(sample: number) {
-    super(sample, MIN_INT, MAX_INT);
-  }
-
-  public static FromValue(
-    value: number,
-    round: boolean = true,
-  ): TemperatureValue {
-    const sample = value * 1e3;
-    return new TemperatureValue(round ? Math.round(sample) : sample);
-  }
-
-  public get value(): number {
+export class TemperatureValue extends ScalarSensorValue {
+  override get value() {
     return this.sample / 1e3;
   }
 
-  public get unit() {
-    return '°C';
+  public static fromValue(sample: number, pretty: boolean): TemperatureValue {
+    if (pretty) sample = Math.round(sample * 1e3);
+    return new this(sample, '°C');
   }
 }
 
-export class AccelerationValue extends Sensor32BitTripleValue {
-  public constructor(sample: Sample3D);
-  public constructor(x: number, y: number, z: number);
-  public constructor(...args: any[]) {
-    super(...args);
+export class AccelerationValue extends Vec3SensorValue {
+  override get value() {
+    return vec3Map(this.sample, v => v / 1e6);
   }
 
-  public static FromValue(
-    x: number,
-    y: number,
-    z: number,
-    round: boolean = true,
+  public static fromValue(
+    sample: Vec3SampleValue,
+    pretty: boolean,
   ): AccelerationValue {
-    return new AccelerationValue(
-      new Sample3D(x, y, z).mapValues(v =>
-        round ? Math.round(v * 1e6) : v * 1e6,
-      ),
-    );
-  }
-
-  public get value(): Sample3D {
-    return this.sample.mapValues((v: number) => v / 1e6);
-  }
-
-  public get unit() {
-    return 'g';
+    if (pretty) sample = vec3Map(sample, val => Math.round(val * 1e6));
+    return new this(sample, 'g');
   }
 }
 
-export class AngularRateValue extends Sensor32BitTripleValue {
-  public constructor(sample: Sample3D);
-  public constructor(x: number, y: number, z: number);
-  public constructor(...args: any[]) {
-    super(...args);
+export class AngularRateValue extends Vec3SensorValue {
+  override get value() {
+    return vec3Map(this.sample, v => v / 1e5);
   }
 
-  public static FromValue(
-    x: number,
-    y: number,
-    z: number,
-    round: boolean = true,
-  ): AngularRateValue {
-    return new AngularRateValue(
-      new Sample3D(x, y, z).mapValues(v =>
-        round ? Math.round(v * 1e5) : v * 1e5,
-      ),
-    );
-  }
-
-  public get value(): Sample3D {
-    return this.sample.mapValues((v: number) => v / 1e5);
-  }
-
-  public get unit() {
-    return 'rad/s';
+  public static fromValue(
+    sample: Vec3SampleValue,
+    pretty: boolean,
+  ): AccelerationValue {
+    if (pretty) sample = vec3Map(sample, val => Math.round(val * 1e5));
+    return new this(sample, 'rad/s');
   }
 }
 
-export class VoltageValue extends SensorScalarValue {
-  public constructor(sample: number) {
-    super(sample, 0, MAX_UINT);
-  }
-
-  public static FromValue(value: number, round: boolean = true): VoltageValue {
-    const sample = value * 1e6;
-    return new VoltageValue(round ? Math.round(sample) : sample);
-  }
-
-  public get value(): number {
+export class VoltageValue extends ScalarSensorValue {
+  override get value() {
     return this.sample / 1e6;
   }
 
-  public get unit() {
-    return 'V';
+  public static fromValue(sample: number, pretty: boolean): TemperatureValue {
+    if (pretty) sample = Math.round(sample * 1e6);
+    return new this(sample, 'V');
   }
 }
 
-export class ECGValue extends SensorScalarValue {
-  public constructor(sample: number) {
-    super(sample, MIN_INT, MAX_INT);
-  }
-
-  public static FromValue(value: number, round: boolean = true): ECGValue {
-    return new ECGValue(round ? Math.round(value) : value);
-  }
-
-  public get value(): number {
-    return this.sample;
-  }
-
-  public get unit() {
-    return 'nV';
+export class ECGValue extends ScalarSensorValue {
+  public static fromValue(sample: number, pretty: boolean): TemperatureValue {
+    if (pretty) sample = Math.round(sample);
+    return new this(sample, 'nV');
   }
 }
 
-export class HumidityValue extends SensorScalarValue {
-  public constructor(sample: number) {
-    super(sample, 0, MAX_UINT);
-  }
-
-  public static FromValue(value: number, round: boolean = true): HumidityValue {
-    const sample = value * 1e3;
-    return new HumidityValue(round ? Math.round(sample) : sample);
-  }
-
-  public get value(): number {
+export class HumidityValue extends ScalarSensorValue {
+  override get value() {
     return this.sample / 1e3;
   }
 
-  public get unit() {
-    return '%RH';
+  public static fromValue(sample: number, pretty: boolean): TemperatureValue {
+    if (pretty) sample = Math.round(sample * 1e3);
+    return new this(sample, '%RH');
   }
 }
 
-export class PressureValue extends SensorScalarValue {
-  public constructor(sample: number) {
-    super(sample, 0, MAX_ULONG);
-  }
-
-  public static FromValue(value: number, round: boolean = true): PressureValue {
-    const sample = value * 1e3;
-    return new PressureValue(round ? Math.round(sample) : sample);
-  }
-
-  public get value(): number {
+export class PressureValue extends ScalarSensorValue {
+  get value() {
     return this.sample / 1e3;
   }
 
-  public get unit() {
-    return 'Pa';
+  public static fromValue(sample: number, pretty: boolean): TemperatureValue {
+    if (pretty) sample = Math.round(sample * 1e3);
+    return new this(sample, 'Pa');
   }
 }
 
-export class MagneticFluxDensityValue extends Sensor32BitTripleValue {
-  public constructor(sample: Sample3D);
-  public constructor(x: number, y: number, z: number);
-  public constructor(...args: any[]) {
-    super(...args);
-  }
-
-  public static FromValue(
-    x: number,
-    y: number,
-    z: number,
-    round: boolean = true,
-  ): MagneticFluxDensityValue {
-    return new MagneticFluxDensityValue(
-      new Sample3D(x, y, z).mapValues(v => (round ? Math.round(v) : v)),
-    );
-  }
-
-  public get value(): Sample3D {
-    return this.sample;
-  }
-
-  public get unit() {
-    return 'nT';
+export class MagneticFluxDensityValue extends Vec3SensorValue {
+  public static fromValue(
+    sample: Vec3SampleValue,
+    pretty: boolean,
+  ): AccelerationValue {
+    if (pretty) sample = vec3Map(sample, val => Math.round(val));
+    return new this(sample, 'nT');
   }
 }
