@@ -1,45 +1,28 @@
-import typescriptEslint from '@typescript-eslint/eslint-plugin';
-import tsParser from '@typescript-eslint/parser';
+import eslint from '@eslint/js';
+import tseslint from 'typescript-eslint';
 
-export default [
+const configs = tseslint.config(
+  eslint.configs.recommended,
+  ...tseslint.configs.recommended,
   {
-    files: ['js-client/**/*.ts'],
-    plugins: {
-      '@typescript-eslint': typescriptEslint,
-    },
-
-    languageOptions: {
-      parser: tsParser,
-      ecmaVersion: 6,
-      sourceType: 'module',
-
-      parserOptions: {
-        project: 'tsconfig.json',
-      },
-    },
-
     rules: {
-      '@typescript-eslint/naming-convention': [
-        'warn',
-        {
-          selector: 'import',
-          format: ['camelCase', 'PascalCase'],
-        },
-      ],
-
-      curly: 'error',
-
-      eqeqeq: [
+      '@typescript-eslint/no-unused-vars': [
         'error',
-        'always',
         {
-          null: 'ignore',
+          args: 'all',
+          argsIgnorePattern: '^_',
+          caughtErrors: 'all',
+          caughtErrorsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          ignoreRestSiblings: true,
         },
       ],
-
-      'no-throw-literal': 'error',
-      semi: ['error', 'always'],
-      'prefer-template': 'warn',
     },
   },
-];
+);
+
+export default configs.map(config => ({
+  ...config,
+  files: ['js-client/**/*.ts'],
+}));
