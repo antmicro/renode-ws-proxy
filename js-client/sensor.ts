@@ -9,8 +9,6 @@ const MAX_UINT = Math.pow(2, 32) - 1;
 const MAX_INT = Math.pow(2, 31) - 1;
 const MIN_INT = -Math.pow(2, 31);
 const MAX_ULONG = Math.pow(2, 64) - 1;
-const MAX_LONG = Math.pow(2, 63) - 1;
-const MIN_LONG = -Math.pow(2, 63);
 
 export enum SensorType {
   Temperature = 'temperature',
@@ -188,7 +186,7 @@ export class TemperatureValue extends SensorScalarValue {
     value: number,
     round: boolean = true,
   ): TemperatureValue {
-    let sample = value * 1e3;
+    const sample = value * 1e3;
     return new TemperatureValue(round ? Math.round(sample) : sample);
   }
 
@@ -265,7 +263,7 @@ export class VoltageValue extends SensorScalarValue {
   }
 
   public static FromValue(value: number, round: boolean = true): VoltageValue {
-    let sample = value * 1e6;
+    const sample = value * 1e6;
     return new VoltageValue(round ? Math.round(sample) : sample);
   }
 
@@ -302,7 +300,7 @@ export class HumidityValue extends SensorScalarValue {
   }
 
   public static FromValue(value: number, round: boolean = true): HumidityValue {
-    let sample = value * 1e3;
+    const sample = value * 1e3;
     return new HumidityValue(round ? Math.round(sample) : sample);
   }
 
@@ -321,7 +319,7 @@ export class PressureValue extends SensorScalarValue {
   }
 
   public static FromValue(value: number, round: boolean = true): PressureValue {
-    let sample = value * 1e3;
+    const sample = value * 1e3;
     return new PressureValue(round ? Math.round(sample) : sample);
   }
 

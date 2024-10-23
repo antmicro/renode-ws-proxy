@@ -55,7 +55,7 @@ export class RenodeProxySession extends EventTarget {
   }
 
   public get socketReady() {
-    let state = this.sessionSocket.readyState ?? WebSocket.CLOSED;
+    const state = this.sessionSocket.readyState ?? WebSocket.CLOSED;
     return state === WebSocket.OPEN;
   }
 
@@ -113,8 +113,8 @@ export class RenodeProxySession extends EventTarget {
     machine: string,
     type?: SensorType,
   ): Promise<Sensor[]> {
-    let sensorType = type === undefined ? {} : { type };
-    let result = await this.sendSessionRequestTyped(
+    const sensorType = type === undefined ? {} : { type };
+    const result = await this.sendSessionRequestTyped(
       {
         action: 'exec-renode',
         payload: {
@@ -319,7 +319,7 @@ export class RenodeProxySession extends EventTarget {
 
   private async sendSessionRequestTyped<Res extends s.Response>(
     req: PartialRequest,
-    resParser: z.ZodType<Res, any, object>,
+    resParser: z.ZodType<Res, z.ZodTypeDef, object>,
   ): Promise<ResData<Res>> {
     const msg = {
       ...req,
@@ -347,7 +347,7 @@ export class RenodeProxySession extends EventTarget {
   }
 
   private sendInner(msg: string): Promise<string> {
-    return new Promise(async (resolve, reject) => {
+    return new Promise((resolve, reject) => {
       console.log('[DEBUG] sending message to session', msg);
 
       if (this.sessionSocket) {
@@ -355,7 +355,7 @@ export class RenodeProxySession extends EventTarget {
           if (err) {
             reject(err);
           } else {
-            resolve(res);
+            resolve(res!);
           }
         });
         this.sessionSocket.send(msg);
@@ -368,10 +368,10 @@ export class RenodeProxySession extends EventTarget {
 
 interface PartialRequest {
   action: string;
-  [key: string]: any;
+  payload: unknown;
 }
 
 // Helper to properly type response payload
 type ResData<T> = T extends { status: 'success'; data?: infer U } ? U : never;
 
-type RequestCallback = (response: any, error?: any) => void;
+type RequestCallback = (response: string | undefined, error?: Error) => void;

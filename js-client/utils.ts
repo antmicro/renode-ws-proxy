@@ -12,7 +12,7 @@ import WebSocket from 'isomorphic-ws';
 //
 // Example: See usage in `tryConnectWs`
 export function eventSelect(target: any, handlers: { [event: string]: any }) {
-  let realHandlers = Object.entries(handlers).map(
+  const realHandlers = Object.entries(handlers).map(
     ([ev, handler]): [string, any] => [
       ev,
       (...args: any[]) => {
