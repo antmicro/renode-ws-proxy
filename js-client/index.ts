@@ -198,6 +198,18 @@ export class RenodeProxySession extends EventTarget {
     );
   }
 
+  public async fetchFileToFs(fileUrl: string) {
+    return this.sendSessionRequestTyped(
+      {
+        action: 'fs/fetch',
+        payload: {
+          args: [fileUrl],
+        },
+      },
+      s.FsFetchResponse,
+    );
+  }
+
   public async downloadFile(path: string): Promise<Uint8Array> {
     const encoded = await this.sendSessionRequestTyped(
       {

@@ -120,6 +120,13 @@ export const FsZipResponse = resp({
 });
 export type FsZipResponse = z.infer<typeof FsZipResponse>;
 
+export const FsFetchResponse = resp({
+  data: z.object({
+    path: z.string(),
+  }),
+});
+export type FsFetchResponse = z.infer<typeof FsFetchResponse>;
+
 export const FsMoveResponse = resp({
   data: z.object({
     from: z.string(),
