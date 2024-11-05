@@ -145,3 +145,8 @@ export const FsCopyResponse = resp({
   }),
 });
 export type FsCopyResponse = z.infer<typeof FsCopyResponse>;
+
+export const ReplaceAnalyzersResponse = resp({
+  data: z.object({}),
+});
+export type ReplaceAnalyzersResponse = z.infer<typeof ReplaceAnalyzersResponse>;

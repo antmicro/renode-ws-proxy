@@ -306,6 +306,16 @@ export class RenodeProxySession extends EventTarget {
     );
   }
 
+  public replaceAnalyzers(path: string) {
+    return this.sendSessionRequestTyped(
+      {
+        action: 'tweak/socket',
+        payload: { args: [path] },
+      },
+      s.ReplaceAnalyzersResponse,
+    );
+  }
+
   public dispose() {
     this.sessionSocket.close();
   }
