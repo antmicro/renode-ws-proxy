@@ -15,7 +15,10 @@ export const OkResponse = BaseResponse.extend({
 export type OkResponse = z.infer<typeof OkResponse>;
 export const ErrorResponse = BaseResponse.extend({
   status: z.literal('failure'),
-  error: z.string().default('Unknown error'),
+  error: z
+    .string()
+    .nullish()
+    .transform(err => err ?? 'Unknown error'),
 });
 export type ErrorResponse = z.infer<typeof ErrorResponse>;
 export const Response = OkResponse.or(ErrorResponse);
