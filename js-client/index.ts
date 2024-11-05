@@ -59,13 +59,14 @@ export class RenodeProxySession extends EventTarget {
     return state === WebSocket.OPEN;
   }
 
-  public async startRenode(cwd?: string): Promise<void> {
+  public async startRenode(cwd?: string, gui: boolean = false): Promise<void> {
     await this.sendSessionRequestTyped(
       {
         action: 'spawn',
         payload: {
           name: 'renode',
           cwd,
+          gui,
         },
       },
       s.SpawnResponse,
