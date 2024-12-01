@@ -51,6 +51,24 @@ class Response:
         return Response(**data)
 
 
+@dataclass
+class Event:
+    version: str
+    event: str
+    data: Optional[Dict[str, Any]] = field(default_factory=dict)
+
+    def to_json(self) -> str:
+        """Serialize the message to a JSON string."""
+        return json.dumps(asdict(self))
+
+    @staticmethod
+    def from_renode_event(event: dict) -> "Event":
+        """Deserialize a JSON string to a Message object."""
+        return Event(
+            version=DATA_PROTOCOL_VERSION, event=event.pop("event"), data=event
+        )
+
+
 if __name__ == "__main__":
     json_str = Message(
         version="1.0", action="create", id=0, payload={"id": 123, "name": "test"}
