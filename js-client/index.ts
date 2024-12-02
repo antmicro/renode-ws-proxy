@@ -1,7 +1,8 @@
-// Copyright (c) 2024 Antmicro <www.antmicro.com>
+// Copyright (c) 2025 Antmicro <www.antmicro.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
+import { version } from './version';
 import { z } from 'zod';
 import * as s from './schema';
 import WebSocket from 'isomorphic-ws';
@@ -346,7 +347,7 @@ export class RenodeProxySession extends EventTarget {
   ): Promise<ResData<Res>> {
     const msg = {
       ...req,
-      version: '0.0.1',
+      version: version,
     };
 
     if (this.socketReady) {

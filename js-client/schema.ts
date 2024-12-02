@@ -1,11 +1,12 @@
-// Copyright (c) 2024 Antmicro <www.antmicro.com>
+// Copyright (c) 2025 Antmicro <www.antmicro.com>
 //
 // SPDX-License-Identifier: Apache-2.0
 
+import { version } from './version';
 import { z, ZodRawShape } from 'zod';
 
 export const BaseResponse = z.object({
-  version: z.literal('0.0.1'),
+  version: z.literal(version),
   status: z.string(),
 });
 export const OkResponse = BaseResponse.extend({
