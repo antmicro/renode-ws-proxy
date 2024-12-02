@@ -31,7 +31,9 @@ class SocketClosedEvent extends Event {
 }
 
 export class RenodeProxySession extends EventTarget {
-  private requestQueue: RequestCallback[] = [];
+  private requestHandlers: RequestHandlers = {};
+  private id: number = 1;
+  private defaultTimeout: number = 2500; // in ms
 
   public static async tryConnect(wsUri: string, workspace: string) {
     const uri = new URL(`/proxy/${workspace}`, wsUri);
@@ -71,6 +73,7 @@ export class RenodeProxySession extends EventTarget {
         },
       },
       s.SpawnResponse,
+      10500, // ms
     );
   }
 
@@ -83,6 +86,7 @@ export class RenodeProxySession extends EventTarget {
         },
       },
       s.ExecMonitorResponse,
+      10000, // ms
     );
   }
 
@@ -324,17 +328,40 @@ export class RenodeProxySession extends EventTarget {
   // *** Event handlers ***
 
   private onData(data: string) {
-    this.requestQueue.shift()?.(data);
+    try {
+      const obj: object = JSON.parse(data);
+      if ('id' in obj && typeof obj.id === 'number') {
+        this.onResponse(obj.id, obj);
+      } else {
+        console.error('RenodeProxySession: Received malformed packet', obj);
+      }
+    } catch {
+      console.error('RenodeProxySession: Received malformed data', data);
+    }
+  }
+
+  private onResponse(id: number, data: object) {
+    const handler = this.requestHandlers[id];
+    delete this.requestHandlers[id];
+    if (handler) {
+      handler(data);
+    } else {
+      console.error(
+        'RenodeProxySession: Received response without request',
+        data,
+      );
+    }
   }
 
   private onError() {
-    this.requestQueue.shift()?.(undefined, new Error('WebSocket error'));
+    console.error('RenodeProxySession: WebSocket error');
   }
 
   private onClose() {
-    while (this.requestQueue.length) {
-      this.requestQueue.shift()?.(undefined, new Error('WebSocket closed'));
-    }
+    Object.values(this.requestHandlers).forEach(handler =>
+      handler?.(undefined, new Error('WebSocket closed')),
+    );
+    this.requestHandlers = {};
 
     this.dispatchEvent(new SocketClosedEvent());
   }
@@ -344,49 +371,68 @@ export class RenodeProxySession extends EventTarget {
   private async sendSessionRequestTyped<Res extends s.Response>(
     req: PartialRequest,
     resParser: z.ZodType<Res, z.ZodTypeDef, object>,
+    timeout?: number,
   ): Promise<ResData<Res>> {
-    const msg = {
-      ...req,
-      version: version,
-    };
-
-    if (this.socketReady) {
-      const res = await this.sendInner(JSON.stringify(msg));
-      const resObj = JSON.parse(res);
-      const resParsed = await resParser.safeParseAsync(resObj);
-
-      if (!resParsed.success) {
-        throw resParsed.error;
-      }
-
-      const obj = resParsed.data as Res;
-      if (obj.status !== 'success') {
-        throw new Error(obj.error);
-      }
-
-      return obj.data;
-    } else {
+    if (!this.socketReady) {
       throw new Error('Not connected');
     }
+
+    const res: object = await this.sendInner(
+      req,
+      timeout ?? this.defaultTimeout,
+    );
+    console.log('[DEBUG] got answer from session', res);
+
+    const resParsed = await resParser.safeParseAsync(res);
+
+    if (!resParsed.success) {
+      throw resParsed.error;
+    }
+
+    const obj = resParsed.data as Res;
+    if (obj.status !== 'success') {
+      throw new Error(obj.error);
+    }
+
+    return obj.data;
   }
 
-  private sendInner(msg: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      console.log('[DEBUG] sending message to session', msg);
-
-      if (this.sessionSocket) {
-        this.requestQueue.push((res, err) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(res!);
-          }
-        });
-        this.sessionSocket.send(msg);
-      } else {
-        reject(new Error('Not connected'));
-      }
+  private sendInner(req: PartialRequest, timeout: number): Promise<object> {
+    const id = this.id++;
+    const msg = JSON.stringify({
+      ...req,
+      version,
+      id,
     });
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    return Promise.race([
+      new Promise<object>((resolve, reject) => {
+        console.log('[DEBUG] sending message to session', msg);
+
+        if (this.sessionSocket) {
+          this.requestHandlers[id] = (res, err) => {
+            clearTimeout(timeoutId);
+            if (err) {
+              reject(err);
+            } else {
+              resolve(res!);
+            }
+          };
+          this.sessionSocket.send(msg);
+        } else {
+          reject(new Error('Not connected'));
+        }
+      }),
+      new Promise<object>(
+        (_resolve, reject) =>
+          (timeoutId = setTimeout(() => {
+            delete this.requestHandlers[id];
+            console.log('[DEBUG] timeout for id', id);
+            reject(new Error(`Request reached timeout after ${timeout}ms`));
+          }, timeout)),
+      ),
+    ]);
   }
 }
 
@@ -398,4 +444,5 @@ interface PartialRequest {
 // Helper to properly type response payload
 type ResData<T> = T extends { status: 'success'; data?: infer U } ? U : never;
 
-type RequestCallback = (response: string | undefined, error?: Error) => void;
+type RequestHandlers = { [key: number]: RequestCallback };
+type RequestCallback = (response: object | undefined, error?: Error) => void;

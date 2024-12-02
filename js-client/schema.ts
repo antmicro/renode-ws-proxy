@@ -10,6 +10,7 @@ export const BaseResponse = z.object({
   status: z.string(),
 });
 export const OkResponse = BaseResponse.extend({
+  id: z.number(),
   status: z.literal('success'),
   data: z.any(),
 });
