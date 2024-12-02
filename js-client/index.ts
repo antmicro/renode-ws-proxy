@@ -32,6 +32,7 @@ class SocketClosedEvent extends Event {
 
 export class RenodeProxySession extends EventTarget {
   private requestHandlers: RequestHandlers = {};
+  private eventHandlers: EventHandlers = {};
   private id: number = 1;
   private defaultTimeout: number = 2500; // in ms
 
@@ -332,6 +333,8 @@ export class RenodeProxySession extends EventTarget {
       const obj: object = JSON.parse(data);
       if ('id' in obj && typeof obj.id === 'number') {
         this.onResponse(obj.id, obj);
+      } else if ('event' in obj && typeof obj.event === 'string') {
+        this.onEvent(obj.event, 'data' in obj ? (obj.data as object) : {});
       } else {
         console.error('RenodeProxySession: Received malformed packet', obj);
       }
@@ -353,6 +356,17 @@ export class RenodeProxySession extends EventTarget {
     }
   }
 
+  private onEvent(event: string, data: object) {
+    if (!this.eventHandlers[event]) {
+      console.error(
+        'RenodeProxySession: Received event with no listeners',
+        data,
+      );
+    } else {
+      this.eventHandlers[event].forEach(handler => handler(data));
+    }
+  }
+
   private onError() {
     console.error('RenodeProxySession: WebSocket error');
   }
@@ -362,6 +376,7 @@ export class RenodeProxySession extends EventTarget {
       handler?.(undefined, new Error('WebSocket closed')),
     );
     this.requestHandlers = {};
+    this.eventHandlers = {};
 
     this.dispatchEvent(new SocketClosedEvent());
   }
@@ -446,3 +461,5 @@ type ResData<T> = T extends { status: 'success'; data?: infer U } ? U : never;
 
 type RequestHandlers = { [key: number]: RequestCallback };
 type RequestCallback = (response: object | undefined, error?: Error) => void;
+type EventHandlers = { [key: string]: EventCallback[] };
+type EventCallback = (event: object) => void;
