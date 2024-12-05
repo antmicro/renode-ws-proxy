@@ -12,6 +12,7 @@ from pyrenode3.wrappers import Emulation, Monitor
 
 from System import ConsoleColor
 from Antmicro.Renode import Emulator
+from Antmicro.Renode.Core import EmulationManager
 from Antmicro.Renode.UI import ConsoleWindowBackendAnalyzer
 from Antmicro.Renode.UserInterface import ShellProvider
 from AntShell import Prompt, Shell
@@ -75,9 +76,13 @@ class State:
             shell = ShellProvider.GenerateShell(monitor, True)
             shell.Terminal = NavigableTerminalEmulator(io, True)
 
-            self.emulation.internal.BackendManager.SetPreferredAnalyzer(
-                UARTBackend, LoggingUartAnalyzer
-            )
+            def set_analyzer():
+                self.emulation.internal.BackendManager.SetPreferredAnalyzer(
+                    UARTBackend, LoggingUartAnalyzer
+                )
+
+            set_analyzer()
+            EmulationManager.Instance.EmulationChanged += set_analyzer
 
         Emulator.BeforeExit += shell.Stop
 
