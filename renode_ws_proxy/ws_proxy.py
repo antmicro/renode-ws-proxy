@@ -404,6 +404,14 @@ def existing_directory(dir):
     return dir
 
 
+def get_bool_env(name: str) -> bool:
+    variable = environ.get(name, None)
+    if not variable:
+        return False
+
+    return variable.lower() in ["1", "true", "yes"]
+
+
 async def main():
     global telnet_proxy, stream_proxy, renode_state, default_gdb, renode_cwd
 
@@ -438,20 +446,24 @@ async def main():
     renode_cwd = args.renode_execution_dir
     default_gdb = args.gdb
 
-    renode_gui_disabled = environ.get("RENODE_PROXY_GUI_DISABLED", None)
-    renode_gui_disabled = (
-        False
-        if renode_gui_disabled is None
-        else renode_gui_disabled.lower() in ["1", "true", "yes"]
-    )
+    renode_gui_disabled = get_bool_env("RENODE_PROXY_GUI_DISABLED")
     if renode_gui_disabled:
         logger.info("RENODE_PROXY_GUI_DISABLED is set, Renode cannot be run with GUI")
+
+    renode_monitor_forwarding_disabled = get_bool_env(
+        "RENODE_PROXY_MONITOR_FORWARDING_DISABLED"
+    )
+    if renode_monitor_forwarding_disabled:
+        logger.info(
+            "RENODE_PROXY_MONITOR_FORWARDING_DISABLED is set, Renode won't write protocol based Monitor interactions to Monitor shell"
+        )
 
     telnet_proxy = TelnetProxy()
     stream_proxy = StreamProxy()
     renode_state = RenodeState(
         renode_path=renode_path,
         gui_disabled=renode_gui_disabled,
+        monitor_forwarding_disabled=renode_monitor_forwarding_disabled,
     )
 
     # XXX: the `max_size` parameter is a temporary workaround for uploading large `elf` files!

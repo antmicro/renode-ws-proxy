@@ -25,19 +25,21 @@ class RenodeState:
         renode_path: str,
         logging_port: int = 29170,
         gui_disabled: bool = True,
+        monitor_forwarding_disabled: bool = False,
     ):
         self.renode = None
         self.renode_path = Path(renode_path)
         assert self.renode_path.exists()
         self.logging_port = logging_port
         self.gui_disabled = gui_disabled
+        self.monitor_forwarding_disabled = monitor_forwarding_disabled
 
     def start(self, gui: bool, cwd: Path):
         if self.renode is not None and self.renode.poll() is None:
             logger.warning("Attempting to start Renode, but it is already running")
             return False
 
-        args = [str(self.logging_port), str(gui)]
+        args = [str(self.logging_port), str(gui), str(self.monitor_forwarding_disabled)]
 
         logger.debug(f"Loading Renode from {self.renode_path}")
         pyrenode3_env = {

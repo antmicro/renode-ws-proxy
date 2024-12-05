@@ -36,6 +36,12 @@ You can disable option to run Renode with GUI, by exporting `RENODE_PROXY_GUI_DI
 export RENODE_PROXY_GUI_DISABLED=1
 ```
 
+You can disable forwarding protocol based commands and their output to the Monitor, by exporting `RENODE_PROXY_MONITOR_FORWARDING_DISABLED` environmental variable.
+
+```sh
+export RENODE_PROXY_MONITOR_FORWARDING_DISABLED=1
+```
+
 - Docker:
 
 ```

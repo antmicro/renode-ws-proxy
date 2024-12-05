@@ -24,13 +24,16 @@ logger = logging.getLogger("state.py")
 
 
 class State:
-    def __init__(self, logging_port: int, gui_enabled: bool):
+    def __init__(
+        self, logging_port: int, gui_enabled: bool, monitor_forwarding_disabled: bool
+    ):
         self.running = True
 
         self.emulation = Emulation()
         self._m = Monitor()
         self._m.internal.Quitted += lambda: logging.debug("closing") or self.quit()
         self.shell = None
+        self.monitor_forwarding_disabled = monitor_forwarding_disabled
 
         self.execute(f"logNetwork {logging_port}")
 
@@ -97,13 +100,15 @@ class State:
         self.shell.Quitted += lambda: logging.debug("closing") or self.quit()
         self.default_prompt = Prompt("(monitor) ", ConsoleColor.DarkRed)
         self.prompt = self.default_prompt
-        self.protocol_prompt = Prompt("\r\n(protocol) ", ConsoleColor.DarkRed)
+
+        if not self.monitor_forwarding_disabled:
+            self.protocol_prompt = Prompt("\r\n(protocol) ", ConsoleColor.DarkRed)
 
         t = Thread(target=self.shell.Start, args=[True])
         t.start()
 
     def _write_shell_command(self, command: str):
-        if self.shell is None:
+        if self.shell is None or self.monitor_forwarding_disabled:
             return
 
         self._write_prompt(self.protocol_prompt)
@@ -111,7 +116,7 @@ class State:
         self.shell.Terminal.NewLine()
 
     def _write_shell_output(self, out: str, err: str):
-        if self.shell is None:
+        if self.shell is None or self.monitor_forwarding_disabled:
             return
 
         if out:

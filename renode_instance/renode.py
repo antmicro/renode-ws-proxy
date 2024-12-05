@@ -70,16 +70,25 @@ def machines(state: State, message):
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: %s <LOGGING_PORT> [ENABLE_GUI]" % sys.argv[0])
+        print(
+            "Usage: %s <LOGGING_PORT> [ENABLE_GUI] [DISABLE_MONITOR_FORWARDING]"
+            % sys.argv[0]
+        )
         exit(1)
 
     gui_enabled = False if len(sys.argv) < 3 else "true".startswith(sys.argv[2].lower())
     if gui_enabled:
         logger.info("GUI is enabled")
 
+    monitor_forwarding_disabled = (
+        False if len(sys.argv) < 4 else "true".startswith(sys.argv[3].lower())
+    )
+    if monitor_forwarding_disabled:
+        logger.info("Protocol messages are disabled")
+
     logging_port = int(sys.argv[1])
     logger.debug(f"Starting pyrenode3 with logs on port {logging_port}")
-    state = State(logging_port, gui_enabled)
+    state = State(logging_port, gui_enabled, monitor_forwarding_disabled)
 
     print(json.dumps({"rsp": "ready"}))
     sys.stdout.flush()
