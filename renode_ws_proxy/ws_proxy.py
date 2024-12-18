@@ -474,6 +474,10 @@ async def main():
             logger.error("exit requested")
             renode_state.kill()
 
+    # NOTE: Without this sleep, app throws an exception that can't be handled.
+    # See: https://github.com/python/cpython/issues/114177
+    await asyncio.sleep(0.5)
+
 
 def run():
     loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
