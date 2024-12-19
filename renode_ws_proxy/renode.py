@@ -1,7 +1,8 @@
-# Copyright (c) 2024 Antmicro <www.antmicro.com>
+# Copyright (c) 2025 Antmicro <www.antmicro.com>
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import os
 import sys
 from typing import IO, Optional, cast
@@ -33,70 +34,81 @@ class RenodeState:
         self.logging_port = logging_port
         self.gui_disabled = gui_disabled
         self.monitor_forwarding_disabled = monitor_forwarding_disabled
+        self.lock = asyncio.Lock()
 
-    def start(self, gui: bool, cwd: Path):
-        if self.renode is not None and self.renode.poll() is None:
-            logger.warning("Attempting to start Renode, but it is already running")
+    async def start(self, gui: bool, cwd: Path):
+        async with self.lock:
+            if self.renode is not None and self.renode.poll() is None:
+                logger.warning("Attempting to start Renode, but it is already running")
+                return False
+
+            args = [
+                str(self.logging_port),
+                str(gui),
+                str(self.monitor_forwarding_disabled),
+            ]
+
+            logger.debug(f"Loading Renode from {self.renode_path}")
+            pyrenode3_env = {
+                **os.environ,
+                "PYRENODE_BIN": str(self.renode_path),
+                "PYRENODE_RUNTIME": "coreclr",  # TODO: make it configurable
+            }
+
+            self.renode = subprocess.Popen(
+                [sys.executable, "-m", "renode_instance.renode"] + args,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+                env=pyrenode3_env,
+                cwd=cwd,
+            )
+
+            logger.info(f"Started Renode (pyrenode3) with PID: {self.renode.pid}")
+
+            ATTEMPTS = 10
+            for i in range(ATTEMPTS):
+                logger.debug(f"Waiting for Renode instance ({i + 1}/{ATTEMPTS})")
+                output = self._renode_read(timeout=1)
+                if output is None:
+                    continue
+
+                if "rsp" in output and output["rsp"] == "ready":
+                    logger.info("Renode instance is ready")
+                    return self.renode.pid
+                else:
+                    logger.error(f"Received illegal starting response: {output}")
+                    break
+
+            await self.kill()
             return False
 
-        args = [str(self.logging_port), str(gui), str(self.monitor_forwarding_disabled)]
+    async def execute(self, command: str, **kwargs):
+        async with self.lock:
+            if self.renode is None:
+                logger.warning(
+                    "Attempted to issue a request to Renode, but never started"
+                )
+                return False, "Renode not started"
+            if self.renode.poll() is not None:
+                logger.warning(
+                    "Attempted to issue a request to Renode, but it is closed"
+                )
+                return False, "Renode is closed"
 
-        logger.debug(f"Loading Renode from {self.renode_path}")
-        pyrenode3_env = {
-            **os.environ,
-            "PYRENODE_BIN": str(self.renode_path),
-            "PYRENODE_RUNTIME": "coreclr",  # TODO: make it configurable
-        }
+            self._renode_write({"cmd": command, **kwargs})
+            output = self._renode_read()
+            assert output is not None
 
-        self.renode = subprocess.Popen(
-            [sys.executable, "-m", "renode_instance.renode"] + args,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
-            env=pyrenode3_env,
-            cwd=cwd,
-        )
+            if "rsp" in output:
+                return output["rsp"], None
+            if "out" in output and len(output["out"]) == 2:
+                return output["out"][0], output["out"][1]
+            if "err" in output:
+                return False, f"Renode: {output['err']}"
 
-        logger.info(f"Started Renode (pyrenode3) with PID: {self.renode.pid}")
-
-        ATTEMPTS = 10
-        for i in range(ATTEMPTS):
-            logger.debug(f"Waiting for Renode instance ({i + 1}/{ATTEMPTS})")
-            output = self._renode_read(timeout=1)
-            if output is None:
-                continue
-
-            if "rsp" in output and output["rsp"] == "ready":
-                logger.info("Renode instance is ready")
-                return self.renode.pid
-            else:
-                logger.error(f"Received illegal starting response: {output}")
-                break
-
-        self.kill()
-        return False
-
-    def execute(self, command: str, **kwargs):
-        if self.renode is None:
-            logger.warning("Attempted to issue a request to Renode, but never started")
-            return False, "Renode not started"
-        if self.renode.poll() is not None:
-            logger.warning("Attempted to issue a request to Renode, but it is closed")
-            return False, "Renode is closed"
-
-        self._renode_write({"cmd": command, **kwargs})
-        output = self._renode_read()
-        assert output is not None
-
-        if "rsp" in output:
-            return output["rsp"], None
-        if "out" in output and len(output["out"]) == 2:
-            return output["out"][0], output["out"][1]
-        if "err" in output:
-            return False, f"Renode: {output['err']}"
-
-        return False, "Communication with Renode error"
+            return False, "Communication with Renode error"
 
     def _renode_read(self, timeout: Optional[int] = None):
         assert self.renode
@@ -154,22 +166,25 @@ class RenodeState:
 
         return False
 
-    def kill(self):
-        if not self.renode:
-            logger.warning(
-                "Requested to kill Renode, but subprocess has not been created"
-            )
+    async def kill(self):
+        async with self.lock:
+            if not self.renode:
+                logger.warning(
+                    "Requested to kill Renode, but subprocess has not been created"
+                )
+                return False
+
+            await self.execute("quit")
+            if self._wait_for_renode_termination(
+                "Waiting for Renode instance to finish"
+            ):
+                logger.info("Renode has been shutdown")
+                return True
+
+            self.renode.kill()
+            if self._wait_for_renode_termination("Waiting for Renode process"):
+                logger.info("Renode has been killed")
+                return True
+
+            logger.error(f"Failed to kill Renode PID: {self.renode.pid}")
             return False
-
-        self.execute("quit")
-        if self._wait_for_renode_termination("Waiting for Renode instance to finish"):
-            logger.info("Renode has been shutdown")
-            return True
-
-        self.renode.kill()
-        if self._wait_for_renode_termination("Waiting for Renode process"):
-            logger.info("Renode has been killed")
-            return True
-
-        logger.error(f"Failed to kill Renode PID: {self.renode.pid}")
-        return False

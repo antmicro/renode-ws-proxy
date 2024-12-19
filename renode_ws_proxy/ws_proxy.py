@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (c) 2024 Antmicro <www.antmicro.com>
+# Copyright (c) 2025 Antmicro <www.antmicro.com>
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -44,7 +44,7 @@ default_gdb = "gdb-multiarch"
 async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -> str:
     """HELPER FUNCTIONS"""
 
-    def handle_spawn(mess, ret):
+    async def handle_spawn(mess, ret):
         software = mess.payload["name"]
         if software == "renode":
             cwd = Path(mess.payload.get("cwd", filesystem_state.cwd))
@@ -52,16 +52,16 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
                 cwd = filesystem_state.resolve_path(cwd)
             gui = mess.payload.get("gui", False)
             logger.debug("Spawning new Renode instance")
-            if renode_state.start(gui, cwd):
+            if await renode_state.start(gui, cwd):
                 ret.status = _SUCCESS
         return ret
 
-    def handle_kill(mess, ret):
+    async def handle_kill(mess, ret):
         software = mess.payload["name"]
         if software == "renode":
             for telnet in list(telnet_proxy.connections):
                 telnet_proxy.remove_connection(telnet)
-            ret.status = _SUCCESS if renode_state.kill() else _FAIL
+            ret.status = _SUCCESS if await renode_state.kill() else _FAIL
         else:
             raise ValueError(f"Killing {software} is not supported")
         return ret
@@ -89,12 +89,12 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
             raise ValueError(f"Getting status for {software} is not supported")
         return ret
 
-    def handle_exec_monitor(mess, ret):
+    async def handle_exec_monitor(mess, ret):
         commands = mess.payload["commands"]
         ret.data = []
         for command in commands:
             logger.debug(f"Executing monitor command: '{command}'")
-            res, err = renode_state.execute(command)
+            res, err = await renode_state.execute(command)
             if res or not err:
                 ret.data.append(res)
             else:
@@ -104,12 +104,12 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
         ret.status = _SUCCESS
         return ret
 
-    def handle_exec_renode(mess, ret):
+    async def handle_exec_renode(mess, ret):
         command = mess.payload["command"]
         args = mess.payload.get("args", {})
         logger.debug(f"Executing command: '{command}'")
 
-        res, err = renode_state.execute(command, **args)
+        res, err = await renode_state.execute(command, **args)
         if res or not err:
             ret.status = _SUCCESS
             ret.data = res
@@ -139,17 +139,17 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
             return ret.to_json()
 
         if mess.action == "spawn":
-            ret = handle_spawn(mess, ret)
+            ret = await handle_spawn(mess, ret)
         elif mess.action == "kill":
-            ret = handle_kill(mess, ret)
+            ret = await handle_kill(mess, ret)
         elif mess.action == "status":
             ret = handle_status(mess, ret)
         elif mess.action == "command":
             ret = handle_command(mess, ret)
         elif mess.action == "exec-monitor":
-            ret = handle_exec_monitor(mess, ret)
+            ret = await handle_exec_monitor(mess, ret)
         elif mess.action == "exec-renode":
-            ret = handle_exec_renode(mess, ret)
+            ret = await handle_exec_renode(mess, ret)
         elif mess.action == "fs/list":
             if (
                 mess.payload is None
@@ -472,7 +472,7 @@ async def main():
             await asyncio.get_running_loop().create_future()
         except asyncio.exceptions.CancelledError:
             logger.error("exit requested")
-            renode_state.kill()
+            await renode_state.kill()
 
     # NOTE: Without this sleep, app throws an exception that can't be handled.
     # See: https://github.com/python/cpython/issues/114177
