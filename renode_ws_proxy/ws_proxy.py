@@ -11,7 +11,7 @@ import logging
 import subprocess
 import shutil
 import argparse
-from typing import cast, Optional
+from typing import cast, Optional, Iterable, TypeAlias
 from pathlib import Path
 
 from base64 import standard_b64decode, standard_b64encode
@@ -40,8 +40,14 @@ LOGLEVEL = logging.DEBUG
 renode_cwd = "/tmp/renode"
 default_gdb = "gdb-multiarch"
 
+ProtocolTaskResult: TypeAlias = tuple[Optional[str], Iterable[asyncio.Task]]
 
-async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -> str:
+tasks_to_cancel_on_forced_exit: set[asyncio.Task] = set()
+
+
+async def parse_proxy_request(
+    request: str, filesystem_state: FileSystemState
+) -> ProtocolTaskResult:
     """HELPER FUNCTIONS"""
 
     async def handle_spawn(mess, ret):
@@ -129,6 +135,7 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
         return ret
 
     ret = Response(version=DATA_PROTOCOL_VERSION, status=_FAIL)
+    tasks = set()
 
     """ PARSING """
     try:
@@ -137,7 +144,7 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
         ret.id = mess.id
 
         if not mess.action:
-            return ret.to_json()
+            return ret.to_json(), tasks
 
         if mess.action == "spawn":
             ret = await handle_spawn(mess, ret)
@@ -301,28 +308,48 @@ async def parse_proxy_request(request: str, filesystem_state: FileSystemState) -
     except Exception as e:
         ret.error = str(e)
 
-    return ret.to_json()
+    return ret.to_json(), tasks
 
 
 async def protocol(websocket: ServerConnection, cwd: Optional[str] = None):
     filesystem_state = FileSystemState(renode_cwd, path=cwd)
 
+    async def handle_request(message) -> ProtocolTaskResult:
+        response, tasks = await parse_proxy_request(message, filesystem_state)
+        logger.debug(f"WebSocket protocol respond: {truncate(response, 300)}")
+        return response, tasks
+
+    async def get_request() -> ProtocolTaskResult:
+        message = await websocket.recv(decode=True)
+        # NOTE: message will always be a string because we pass decode=True to recv
+        message = cast(str, message)
+        logger.debug(f"WebSocket protocol request: {truncate(message, 300)}")
+        return None, {
+            asyncio.Task(handle_request(message)),
+            asyncio.Task(get_request()),
+        }
+
+    pending = {asyncio.Task(get_request())}
+
     try:
         while True:
-            message = await websocket.recv(decode=True)
-            # NOTE: message will always be a string because we pass decode=True to recv
-            message = cast(str, message)
-            logger.debug(
-                f"WebSocket protocol handler received: {truncate(message, 300)}"
+            done, pending = await asyncio.wait(
+                pending, return_when=asyncio.FIRST_COMPLETED
             )
-            resp = await parse_proxy_request(message, filesystem_state)
-            await websocket.send(resp)
-            logger.debug(f"WebSocket protocol handler responded: {truncate(resp, 300)}")
+
+            for task in done:
+                response, tasks = task.result()
+                pending.update(tasks)
+                if response:
+                    await websocket.send(response)
+
     except Exception as e:
         logger.error(f"Error: {e}")
         await websocket.close()
     finally:
-        renode_state.kill()
+        for task in pending:
+            task.cancel()
+        await renode_state.kill()
 
 
 async def telnet(websocket: ServerConnection, port_str: str):
@@ -414,7 +441,13 @@ def get_bool_env(name: str) -> bool:
 
 
 async def main():
-    global telnet_proxy, stream_proxy, renode_state, default_gdb, renode_cwd
+    global \
+        telnet_proxy, \
+        stream_proxy, \
+        renode_state, \
+        default_gdb, \
+        renode_cwd, \
+        tasks_to_cancel_on_forced_exit
 
     parser = argparse.ArgumentParser(
         description="WebSocket based server for managing remote Renode instance"
@@ -473,6 +506,9 @@ async def main():
             await asyncio.get_running_loop().create_future()
         except asyncio.exceptions.CancelledError:
             logger.error("exit requested")
+            for task in tasks_to_cancel_on_forced_exit:
+                task.cancel()
+            tasks_to_cancel_on_forced_exit = set()
             await renode_state.kill()
 
     # NOTE: Without this sleep, app throws an exception that can't be handled.
