@@ -18,7 +18,7 @@ from base64 import standard_b64decode, standard_b64encode
 from websockets.asyncio.server import serve, ServerConnection
 import sys
 from sys import exit
-from multiprocessing import freeze_support
+
 from renode_ws_proxy.telnet_proxy import TelnetProxy
 from renode_ws_proxy.stream_proxy import StreamProxy
 from renode_ws_proxy.filesystem import FileSystemState
@@ -26,6 +26,7 @@ from renode_ws_proxy.renode import RenodeState
 from renode_ws_proxy.protocols import (
     Message,
     Response,
+    Event,
     DATA_PROTOCOL_VERSION,
     _SUCCESS,
     _FAIL,
@@ -52,6 +53,7 @@ async def parse_proxy_request(
 
     async def handle_spawn(mess, ret):
         software = mess.payload["name"]
+        tasks = set()
         if software == "renode":
             cwd = Path(mess.payload.get("cwd", filesystem_state.cwd))
             if not cwd.is_absolute():
@@ -60,7 +62,26 @@ async def parse_proxy_request(
             logger.debug("Spawning new Renode instance")
             if await renode_state.start(gui, cwd):
                 ret.status = _SUCCESS
-        return ret
+
+                async def prepare_event() -> ProtocolTaskResult:
+                    logger.debug("Awaiting Renode event")
+                    event = await renode_state.get_event()
+                    return Event.from_renode_event(event).to_json(), {
+                        asyncio.Task(prepare_event())
+                    }
+
+                read_task = asyncio.Task(renode_state.read_loop())
+                log_task = asyncio.Task(renode_state.log_loop())
+
+                tasks_to_cancel_on_forced_exit.add(read_task)
+                tasks_to_cancel_on_forced_exit.add(log_task)
+
+                tasks = {
+                    read_task,
+                    asyncio.Task(prepare_event()),
+                    log_task,
+                }
+        return ret, tasks
 
     async def handle_kill(mess, ret):
         software = mess.payload["name"]
@@ -147,7 +168,7 @@ async def parse_proxy_request(
             return ret.to_json(), tasks
 
         if mess.action == "spawn":
-            ret = await handle_spawn(mess, ret)
+            ret, tasks = await handle_spawn(mess, ret)
         elif mess.action == "kill":
             ret = await handle_kill(mess, ret)
         elif mess.action == "status":
@@ -524,8 +545,6 @@ def run():
 
 
 if __name__ == "__main__":
-    # Enable multiprocessing for frozen executables
-    freeze_support()
     # Workaround to enable support for bundlers like pyinstaller
     if (
         len(sys.argv) > 2

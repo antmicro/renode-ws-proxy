@@ -5,13 +5,9 @@
 import asyncio
 import os
 import sys
-from typing import IO, Optional, cast
+from typing import Optional, cast
 import logging
-import subprocess
 import json
-import multiprocessing
-from multiprocessing.connection import Connection
-import io
 from pathlib import Path
 
 logging.basicConfig(
@@ -35,10 +31,46 @@ class RenodeState:
         self.gui_disabled = gui_disabled
         self.monitor_forwarding_disabled = monitor_forwarding_disabled
         self.lock = asyncio.Lock()
+        self.started_event = asyncio.Event()
+        self.event_enqueued = asyncio.Event()
+        self.response_enqueued = asyncio.Event()
+        self.event_queue = []
+        self.response_queue = []
 
-    async def start(self, gui: bool, cwd: Path):
+    async def read_loop(self) -> None:
+        while await self.started_event.wait():
+            assert self.renode and self.renode.stdout
+            message = json.loads(await self.renode.stdout.readline())
+
+            if "evt" in message:
+                self.event_queue.append(message)
+                self.event_enqueued.set()
+            else:
+                self.response_queue.append(message)
+                self.response_enqueued.set()
+
+    async def log_loop(self) -> None:
+        while await self.started_event.wait():
+            assert self.renode and self.renode.stderr
+            logger.debug(await self.renode.stderr.readline())
+
+    async def get_event(self) -> dict:
+        self.event_enqueued.clear()
+        if len(self.event_queue) == 0:
+            await self.event_enqueued.wait()
+
+        return self.event_queue.pop()["evt"]
+
+    async def _response(self) -> dict:
+        self.response_enqueued.clear()
+        if len(self.response_queue) == 0:
+            await self.response_enqueued.wait()
+
+        return self.response_queue.pop()
+
+    async def start(self, gui: bool, cwd: Path) -> int | bool:
         async with self.lock:
-            if self.renode is not None and self.renode.poll() is None:
+            if self.renode is not None and self.renode.returncode is None:
                 logger.warning("Attempting to start Renode, but it is already running")
                 return False
 
@@ -55,27 +87,39 @@ class RenodeState:
                 "PYRENODE_RUNTIME": "coreclr",  # TODO: make it configurable
             }
 
-            self.renode = subprocess.Popen(
-                [sys.executable, "-m", "renode_instance.renode"] + args,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL,
+            self.renode = await asyncio.subprocess.create_subprocess_exec(
+                sys.executable,
+                "-m",
+                "renode_instance.renode",
+                *args,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
                 start_new_session=True,
                 env=pyrenode3_env,
                 cwd=cwd,
             )
+            assert self.renode and self.renode.stdout
 
             logger.info(f"Started Renode (pyrenode3) with PID: {self.renode.pid}")
 
             ATTEMPTS = 10
             for i in range(ATTEMPTS):
                 logger.debug(f"Waiting for Renode instance ({i + 1}/{ATTEMPTS})")
-                output = self._renode_read(timeout=1)
-                if output is None:
+                message = ""
+
+                try:
+                    message = await asyncio.wait_for(
+                        self.renode.stdout.readline(), timeout=1
+                    )
+                except asyncio.TimeoutError:
                     continue
+
+                output = json.loads(message)
 
                 if "rsp" in output and output["rsp"] == "ready":
                     logger.info("Renode instance is ready")
+                    self.started_event.set()
                     return self.renode.pid
                 else:
                     logger.error(f"Received illegal starting response: {output}")
@@ -84,22 +128,21 @@ class RenodeState:
             await self.kill()
             return False
 
-    async def execute(self, command: str, **kwargs):
+    async def execute(self, command: str, **kwargs) -> tuple[bool | str, Optional[str]]:
         async with self.lock:
             if self.renode is None:
                 logger.warning(
                     "Attempted to issue a request to Renode, but never started"
                 )
                 return False, "Renode not started"
-            if self.renode.poll() is not None:
+            if self.renode.returncode is not None:
                 logger.warning(
                     "Attempted to issue a request to Renode, but it is closed"
                 )
                 return False, "Renode is closed"
 
             self._renode_write({"cmd": command, **kwargs})
-            output = self._renode_read()
-            assert output is not None
+            output = await self._response()
 
             if "rsp" in output:
                 return output["rsp"], None
@@ -110,43 +153,17 @@ class RenodeState:
 
             return False, "Communication with Renode error"
 
-    def _renode_read(self, timeout: Optional[int] = None):
-        assert self.renode
-        (recv, send) = multiprocessing.Pipe(duplex=False)
-        if timeout is None:
-            self._renode_read_blocking(send)
-            return recv.recv()
-        # Do the blocking readline in a thread to support timeouts
-        # Thread safe since we do not access any self() method while waiting
-        # Have to store the output in a mutable variable since there is no simple way to access a threads return value
-        read_task = multiprocessing.Process(target=self._renode_read_blocking(send))
-        read_task.daemon = True
-        read_task.start()
-        if recv.poll(timeout=timeout):
-            # recived data
-            return recv.recv()
-        else:
-            # Timeout reached
-            read_task.terminate()
-            return None
-
-    def _renode_read_blocking(self, pipe: Connection):
-        assert self.renode
-        # NOTE: stdout is guaranteed to be present because we only spawn Renode with stdout set to PIPE
-        stdout = cast(io.BufferedReader, self.renode.stdout)
-        pipe.send(json.loads(stdout.readline()))
-
-    def _renode_write(self, request):
-        assert self.renode
+    def _renode_write(self, request) -> None:
+        assert self.renode and self.renode.stdin
         # NOTE: stdin is guaranteed to be present because we only spawn Renode with stdin set to PIPE
-        stdin = cast(IO[bytes], self.renode.stdin)
+        stdin = cast(asyncio.StreamWriter, self.renode.stdin)
 
         request_line = json.dumps(request)
 
         stdin.write((request_line + "\n").encode())
-        stdin.flush()
+        # stdin.flush()
 
-    def _wait_for_renode_termination(self, debug_log: str):
+    async def _wait_for_renode_termination(self, debug_log: str) -> bool:
         assert self.renode
         ATTEMPTS = 10
         for i in range(ATTEMPTS):
@@ -156,8 +173,8 @@ class RenodeState:
             logger.debug(f"{debug_log} ({i + 1}/{ATTEMPTS})")
 
             try:
-                self.renode.communicate(timeout=1)
-            except subprocess.TimeoutExpired:
+                await asyncio.wait_for(self.renode.communicate(), timeout=1)
+            except asyncio.TimeoutError:
                 pass
 
         if self.renode.returncode:
@@ -166,25 +183,30 @@ class RenodeState:
 
         return False
 
-    async def kill(self):
-        async with self.lock:
-            if not self.renode:
-                logger.warning(
-                    "Requested to kill Renode, but subprocess has not been created"
-                )
-                return False
+    async def kill(self) -> bool:
+        self.started_event.clear()
+        if not self.renode:
+            logger.warning(
+                "Requested to kill Renode, but subprocess has not been created"
+            )
+            return False
 
-            await self.execute("quit")
-            if self._wait_for_renode_termination(
+        try:
+            await asyncio.wait_for(self.execute("quit"), timeout=0.5)
+            if await self._wait_for_renode_termination(
                 "Waiting for Renode instance to finish"
             ):
                 logger.info("Renode has been shutdown")
                 return True
+        except asyncio.TimeoutError:
+            pass
 
-            self.renode.kill()
-            if self._wait_for_renode_termination("Waiting for Renode process"):
-                logger.info("Renode has been killed")
-                return True
+        self.renode.kill()
+        if await self._wait_for_renode_termination(
+            "Waiting for Renode process to terminate"
+        ):
+            logger.info("Renode has been killed")
+            return True
 
-            logger.error(f"Failed to kill Renode PID: {self.renode.pid}")
-            return False
+        logger.error(f"Failed to kill Renode PID: {self.renode.pid}")
+        return False
