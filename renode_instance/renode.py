@@ -122,6 +122,8 @@ def main():
             print(json.dumps(response))
             sys.stdout.flush()
 
+    event_handler(state, "quit")
+
 
 if __name__ == "__main__":
     main()
