@@ -6,7 +6,8 @@ import json
 from typing import Optional, Dict, Any
 from dataclasses import dataclass, field, asdict
 
-DATA_PROTOCOL_VERSION = "0.0.1"
+DATA_PROTOCOL_VERSION = "1.0.0"
+MAJOR, MINOR, PATCH = DATA_PROTOCOL_VERSION.split(".")
 
 _SUCCESS = "success"
 _FAIL = "failure"
@@ -30,6 +31,11 @@ class Message:
         """Deserialize a JSON string to a Message object."""
         data = json.loads(json_str)
         return Message(**data)
+
+    def validate(self):
+        major, minor, patch = self.version.split(".")
+        if major != MAJOR:
+            raise Exception("Incompatible protocol version detected")
 
 
 @dataclass

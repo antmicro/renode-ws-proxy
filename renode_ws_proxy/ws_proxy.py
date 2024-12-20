@@ -161,6 +161,7 @@ async def parse_proxy_request(
     """ PARSING """
     try:
         mess = Message.from_json(request)
+        mess.validate()
         logger.debug(f"Deserialized Message: {truncate(request, 300)}")
         ret.id = mess.id
 

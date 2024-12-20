@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-import { version } from './version';
+import { version, major, minor } from './version';
 import { z } from 'zod';
 import * as s from './schema';
 import WebSocket from 'isomorphic-ws';
@@ -430,6 +430,11 @@ export class RenodeProxySession extends EventTarget {
     const obj = resParsed.data as Res;
     if (obj.status !== 'success') {
       throw new Error(obj.error);
+    }
+
+    const [resMajor, resMinor] = obj.version.split('.');
+    if (major != resMajor || minor < resMinor) {
+      throw new Error('Protocol version is incompatible');
     }
 
     return obj.data;
