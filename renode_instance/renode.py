@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (c) 2024 Antmicro <www.antmicro.com>
+# Copyright (c) 2025 Antmicro <www.antmicro.com>
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -66,6 +66,18 @@ def machines(state: State, message):
     return {"rsp": names}
 
 
+def event_handler(state: State, event: str, **payload):
+    if "event" in payload:
+        print(
+            json.dumps(
+                {"err": f"attempted to send event: '{event}', with payload '{payload}'"}
+            )
+        )
+    else:
+        print(json.dumps({"evt": {"event": event, **payload}}))
+    sys.stdout.flush()
+
+
 def main():
     if len(sys.argv) < 2:
         print(
@@ -86,7 +98,7 @@ def main():
 
     logging_port = int(sys.argv[1])
     logger.debug(f"Starting pyrenode3 with logs on port {logging_port}")
-    state = State(logging_port, gui_enabled, monitor_forwarding_disabled)
+    state = State(logging_port, gui_enabled, monitor_forwarding_disabled, event_handler)
 
     print(json.dumps({"rsp": "ready"}))
     sys.stdout.flush()

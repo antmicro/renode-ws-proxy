@@ -1,8 +1,8 @@
-# Copyright (c) 2024 Antmicro <www.antmicro.com>
+# Copyright (c) 2025 Antmicro <www.antmicro.com>
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import cast
+from typing import cast, Protocol
 from threading import Thread
 import logging
 
@@ -24,11 +24,20 @@ logging.basicConfig(
 logger = logging.getLogger("state.py")
 
 
+class EventHandler(Protocol):
+    def __call__(self, state: "State", event: str, **payload) -> None: ...
+
+
 class State:
     def __init__(
-        self, logging_port: int, gui_enabled: bool, monitor_forwarding_disabled: bool
+        self,
+        logging_port: int,
+        gui_enabled: bool,
+        monitor_forwarding_disabled: bool,
+        event_handler: EventHandler,
     ):
         self.running = True
+        self.report_event = event_handler
 
         self.emulation = Emulation()
         self._m = Monitor()
