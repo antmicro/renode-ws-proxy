@@ -12,7 +12,10 @@ from pyrenode3.wrappers import Emulation, Monitor
 
 from System import ConsoleColor
 from Antmicro.Renode import Emulator
+from Antmicro.Renode.Analyzers import LoggingUartAnalyzer
 from Antmicro.Renode.Core import EmulationManager
+from Antmicro.Renode.Logging import Logger, NetworkBackend
+from Antmicro.Renode.Peripherals.UART import UARTBackend
 from Antmicro.Renode.UI import ConsoleWindowBackendAnalyzer
 from Antmicro.Renode.UserInterface import ShellProvider
 from AntShell import Prompt, Shell
@@ -45,7 +48,8 @@ class State:
         self.shell = None
         self.monitor_forwarding_disabled = monitor_forwarding_disabled
 
-        self.execute(f"logNetwork {logging_port}")
+        Logger.AddBackend(NetworkBackend(logging_port), "network", True)
+        logger.info(f"Renode logs available at port {logging_port}")
 
         self.__prepare_monitor(gui_enabled, logging_port - 1)
 
@@ -76,9 +80,6 @@ class State:
             terminal.Quitted += Emulator.Exit
             terminal.Show()
         else:
-            from Antmicro.Renode.Peripherals.UART import UARTBackend
-            from Antmicro.Renode.Analyzers import LoggingUartAnalyzer
-
             io = IOProvider()
             io.Backend = SocketIOSource(port)
 
