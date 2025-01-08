@@ -7,3 +7,6 @@ class Emulation:
 
 class EmulationManager:
     Instance: Emulation
+
+
+class IMachine: ...

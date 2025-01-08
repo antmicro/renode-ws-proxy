@@ -7,20 +7,27 @@ from threading import Thread
 import logging
 from functools import lru_cache
 
-from Antmicro.Renode.Utilities import SocketIOSource
 from pyrenode3.inits import XwtInit
-from pyrenode3.wrappers import Emulation, Monitor
+from pyrenode3.wrappers import Emulation, Monitor, Machine
+from pyrenode3.conversion import interface_to_class
 
 from System import ConsoleColor
 from Antmicro.Renode import Emulator
-from Antmicro.Renode.Analyzers import LoggingUartAnalyzer
+from Antmicro.Renode.Analyzers import SocketUartAnalyzer
 from Antmicro.Renode.Core import EmulationManager
 from Antmicro.Renode.Logging import Logger, NetworkBackend
+from Antmicro.Renode.Peripherals import (
+    IPeripheralExtensions,
+    IAnalyzableBackendAnalyzer,
+)
 from Antmicro.Renode.Peripherals.UART import UARTBackend
 from Antmicro.Renode.UI import ConsoleWindowBackendAnalyzer
 from Antmicro.Renode.UserInterface import ShellProvider
+from Antmicro.Renode.Utilities import SocketIOSource
 from AntShell import Prompt, Shell
 from AntShell.Terminal import IOProvider, NavigableTerminalEmulator
+
+from renode_instance.utils import csharp_is, get_full_name
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -107,8 +114,9 @@ class State:
 
             def set_analyzer():
                 self.emulation.internal.BackendManager.SetPreferredAnalyzer(
-                    UARTBackend, LoggingUartAnalyzer
+                    UARTBackend, SocketUartAnalyzer
                 )
+                self.emulation.internal.BackendManager.PeripheralBackendAnalyzerCreated += self.__signal_uart_opened_event
 
             set_analyzer()
             EmulationManager.Instance.EmulationChanged += set_analyzer
@@ -140,6 +148,18 @@ class State:
 
         t = Thread(target=self.shell.Start, args=[True])
         t.start()
+
+    def __signal_uart_opened_event(self, analyzer: IAnalyzableBackendAnalyzer):
+        if csharp_is(SocketUartAnalyzer, analyzer):
+            socket_analyzer = interface_to_class(analyzer)
+            port = socket_analyzer.Port
+            uart = socket_analyzer.UART
+            machine = IPeripheralExtensions.GetMachine(uart)
+            name = get_full_name(uart, Machine(machine))
+            machineName = self.emulation.internal[machine]
+            self.report_event(
+                self, "uart-opened", port=port, name=name, machineName=machineName
+            )
 
     def _write_shell_command(self, command: str):
         if self.shell is None or self.monitor_forwarding_disabled:
