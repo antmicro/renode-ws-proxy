@@ -13,8 +13,8 @@ from typing import Iterable, cast
 import pyrenode3  # noqa: F401
 from Antmicro.Renode.Peripherals.UART import IUART
 
-from renode_instance.state import State
-from renode_instance.utils import Command, get_full_name
+from renode_instance.state import State, Command
+from renode_instance.utils import get_full_name
 import renode_instance.sensors  # noqa: F401
 
 logging.basicConfig(

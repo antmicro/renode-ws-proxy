@@ -5,6 +5,7 @@
 from typing import cast, Protocol
 from threading import Thread
 import logging
+from functools import lru_cache
 
 from Antmicro.Renode.Utilities import SocketIOSource
 from pyrenode3.inits import XwtInit
@@ -25,6 +26,24 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger("state.py")
+
+
+@lru_cache(maxsize=None)
+class Command:
+    def __init__(self):
+        self.commands = {}
+        self.default_handler = None
+
+    def run(self, command: str, state: "State", message):
+        return self.commands.get(command, self.default_handler)(state, message)
+
+    def register(self, handler):
+        self.commands[handler.__name__.replace("_", "-")] = handler
+
+    def register_default(self, handler):
+        if self.default_handler is not None:
+            raise Exception("Default hander is already set")
+        self.default_handler = handler
 
 
 class EventHandler(Protocol):

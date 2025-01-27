@@ -14,8 +14,8 @@ from Antmicro.Renode.Peripherals.Sensor import (
     IMagneticSensor,
 )
 
-from renode_instance.state import State
-from renode_instance.utils import Command, csharp_is, csharp_as, get_full_name
+from renode_instance.state import State, Command
+from renode_instance.utils import csharp_is, csharp_as, get_full_name
 
 MAX_UINT = (1 << 32) - 1
 MAX_INT = (1 << 31) - 1

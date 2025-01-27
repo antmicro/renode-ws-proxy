@@ -4,10 +4,7 @@
 
 from typing import Any, Type, Optional, Iterable
 import logging
-from functools import lru_cache
 from clr import GetClrType
-
-from renode_instance.state import State
 
 from pyrenode3.wrappers import Machine
 
@@ -17,24 +14,6 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger("utils.py")
-
-
-@lru_cache(maxsize=None)
-class Command:
-    def __init__(self):
-        self.commands = {}
-        self.default_handler = None
-
-    def run(self, command: str, state: State, message):
-        return self.commands.get(command, self.default_handler)(state, message)
-
-    def register(self, handler):
-        self.commands[handler.__name__.replace("_", "-")] = handler
-
-    def register_default(self, handler):
-        if self.default_handler is not None:
-            raise Exception("Default hander is already set")
-        self.default_handler = handler
 
 
 def csharp_is(T: Type, obj: Any) -> bool:
