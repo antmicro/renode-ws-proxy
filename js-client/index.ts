@@ -22,6 +22,7 @@ export {
   SensorTypeFromString,
   GetSensorValue,
   SensorValue,
+  EventCallback,
 };
 
 class SocketClosedEvent extends Event {
@@ -320,6 +321,28 @@ export class RenodeProxySession extends EventTarget {
       },
       s.ReplaceAnalyzersResponse,
     );
+  }
+
+  public registerEventCallback(event: string, callback: EventCallback) {
+    if (!this.eventHandlers[event]) {
+      this.eventHandlers[event] = [];
+    }
+    this.eventHandlers[event].push(callback);
+  }
+
+  public unregisterEventCallback(
+    event: string,
+    callback: EventCallback,
+  ): boolean {
+    if (!this.eventHandlers[event]) {
+      return false;
+    }
+    const index = this.eventHandlers[event].indexOf(callback);
+    if (index == -1) {
+      return false;
+    }
+    this.eventHandlers[event].splice(index, 1);
+    return true;
   }
 
   public dispose() {
