@@ -8,6 +8,7 @@ import * as s from './schema';
 import WebSocket from 'isomorphic-ws';
 import { Buffer } from 'buffer';
 import { tryConnectWs } from './utils';
+import { UartOpened, UartOpenedCallback, UartOpenedArgs } from './events';
 import {
   GetSensorValue,
   Sensor,
@@ -23,6 +24,8 @@ export {
   GetSensorValue,
   SensorValue,
   EventCallback,
+  UartOpenedArgs,
+  UartOpenedCallback,
 };
 
 class SocketClosedEvent extends Event {
@@ -343,6 +346,20 @@ export class RenodeProxySession extends EventTarget {
     }
     this.eventHandlers[event].splice(index, 1);
     return true;
+  }
+
+  public registerUartOpenedCallback(
+    callback: UartOpenedCallback,
+  ): EventCallback {
+    const wrapped = (data: object) => {
+      callback(data as UartOpenedArgs);
+    };
+    this.registerEventCallback(UartOpened, wrapped);
+    return wrapped;
+  }
+
+  public unregisterUartOpenedCallback(callback: EventCallback): boolean {
+    return this.unregisterEventCallback(UartOpened, callback);
   }
 
   public dispose() {
