@@ -74,7 +74,7 @@ class State:
         self.shell = None
         self.monitor_forwarding_disabled = monitor_forwarding_disabled
 
-        Logger.AddBackend(NetworkBackend(logging_port), "network", True)
+        Logger.AddBackend(NetworkBackend(logging_port, False), "network", True)
         logger.info(f"Renode logs available at port {logging_port}")
 
         self.__prepare_monitor(gui_enabled, logging_port - 1)
