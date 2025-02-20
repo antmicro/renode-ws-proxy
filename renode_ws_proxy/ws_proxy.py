@@ -388,6 +388,13 @@ async def telnet(websocket: ServerConnection, port_str: str):
 
 
 async def stream(websocket: ServerConnection, program: str):
+    if not default_gdb:
+        logger.info(
+            "Can't open gdb connection without its binary. Pass it using -g [gdb] flag."
+        )
+        await websocket.close()
+        return
+
     program = program if program == "None" else default_gdb
     logger.debug(f"stream: starting {program}")
     try:
@@ -485,8 +492,9 @@ async def main():
     parser.add_argument(
         "-g",
         "--gdb",
+        const=default_gdb,
+        nargs="?",
         type=valid_program,
-        default=default_gdb,
         help=f"path to gdb binary that will be used (defaults to {default_gdb})",
     )
     parser.add_argument(
