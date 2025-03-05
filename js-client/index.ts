@@ -38,7 +38,7 @@ export class RenodeProxySession extends EventTarget {
   private requestHandlers: RequestHandlers = {};
   private eventHandlers: EventHandlers = {};
   private id: number = 1;
-  private defaultTimeout: number = 2500; // in ms
+  private defaultTimeout: number = 60000; // in ms
 
   public static async tryConnect(wsUri: string, workspace: string) {
     const uri = new URL(`/proxy/${workspace}`, wsUri);
