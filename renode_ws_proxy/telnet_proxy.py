@@ -19,7 +19,9 @@ class TelnetProxy:
         self.connections = {}
 
     async def add_connection(self, port: int, websocket: ServerConnection) -> None:
-        reader, writer = await telnetlib3.open_connection("localhost", port)
+        reader, writer = await telnetlib3.open_connection(
+            "localhost", port, force_binary=True
+        )
         self.connections[port] = {
             "websocket": websocket,
             "tnReader": reader,
