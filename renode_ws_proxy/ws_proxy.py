@@ -388,14 +388,14 @@ async def telnet(websocket: ServerConnection, port_str: str):
 
 
 async def stream(websocket: ServerConnection, program: str):
-    if not default_gdb:
-        logger.info(
-            "Can't open gdb connection without its binary. Pass it using -g [gdb] flag."
+    if not program and not default_gdb:
+        logger.error(
+            "Can't open gdb connection without its binary. Pass it using -g [gdb] flag or pass valid program in the url."
         )
         await websocket.close()
         return
 
-    program = program if program == "None" else default_gdb
+    program = program if program else default_gdb
     logger.debug(f"stream: starting {program}")
     try:
         await stream_proxy.add_connection(program, websocket)
