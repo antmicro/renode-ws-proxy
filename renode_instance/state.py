@@ -70,7 +70,11 @@ class State:
 
         self.emulation = Emulation()
         self._m = Monitor()
-        self._m.internal.Quitted += lambda: logging.debug("closing") or self.quit()
+        self._m.internal.Quitted += (
+            lambda: logging.debug("closing")
+            or self.quit()
+            or self.__signal_renode_quitted()
+        )
         self.shell = None
         self.monitor_forwarding_disabled = monitor_forwarding_disabled
 
@@ -160,6 +164,9 @@ class State:
             self.report_event(
                 self, "uart-opened", port=port, name=name, machineName=machineName
             )
+
+    def __signal_renode_quitted(self):
+        self.report_event(self, "renode-quitted")
 
     def _write_shell_command(self, command: str):
         if self.shell is None or self.monitor_forwarding_disabled:

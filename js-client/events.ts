@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export const UartOpened = 'uart-opened';
+export const RenodeQuitted = 'renode-quitted';
+
 export interface UartOpenedArgs {
   port: number;
   name: string;

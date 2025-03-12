@@ -8,7 +8,12 @@ import * as s from './schema';
 import WebSocket from 'isomorphic-ws';
 import { Buffer } from 'buffer';
 import { tryConnectWs } from './utils';
-import { UartOpened, UartOpenedCallback, UartOpenedArgs } from './events';
+import {
+  UartOpened,
+  UartOpenedCallback,
+  UartOpenedArgs,
+  RenodeQuitted,
+} from './events';
 import {
   GetSensorValue,
   Sensor,
@@ -24,6 +29,7 @@ export {
   GetSensorValue,
   SensorValue,
   EventCallback,
+  EmptyEventCallback,
   UartOpenedArgs,
   UartOpenedCallback,
 };
@@ -362,6 +368,14 @@ export class RenodeProxySession extends EventTarget {
     return this.unregisterEventCallback(UartOpened, callback);
   }
 
+  public registerRenodeExitedCallback(callback: EmptyEventCallback): void {
+    this.registerEventCallback(RenodeQuitted, callback);
+  }
+
+  public unregisterRenodeExitedCallback(callback: EmptyEventCallback): boolean {
+    return this.unregisterEventCallback(RenodeQuitted, callback);
+  }
+
   public dispose() {
     this.sessionSocket.close();
   }
@@ -399,7 +413,7 @@ export class RenodeProxySession extends EventTarget {
   private onEvent(event: string, data: object) {
     if (!this.eventHandlers[event]) {
       console.error(
-        'RenodeProxySession: Received event with no listeners',
+        `RenodeProxySession: Received event '${event}' with no listeners`,
         data,
       );
     } else {
@@ -508,3 +522,4 @@ type RequestHandlers = { [key: number]: RequestCallback };
 type RequestCallback = (response: object | undefined, error?: Error) => void;
 type EventHandlers = { [key: string]: EventCallback[] };
 type EventCallback = (event: object) => void;
+type EmptyEventCallback = () => void;
