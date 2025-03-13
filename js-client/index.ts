@@ -368,11 +368,13 @@ export class RenodeProxySession extends EventTarget {
     return this.unregisterEventCallback(UartOpened, callback);
   }
 
-  public registerRenodeExitedCallback(callback: EmptyEventCallback): void {
+  public registerRenodeQuittedCallback(callback: EmptyEventCallback): void {
     this.registerEventCallback(RenodeQuitted, callback);
   }
 
-  public unregisterRenodeExitedCallback(callback: EmptyEventCallback): boolean {
+  public unregisterRenodeQuittedCallback(
+    callback: EmptyEventCallback,
+  ): boolean {
     return this.unregisterEventCallback(RenodeQuitted, callback);
   }
 
