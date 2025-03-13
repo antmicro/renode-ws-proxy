@@ -448,11 +448,25 @@ def truncate(message, length):
     return message[:length] + " [...]" if len(message) > length else message
 
 
-def valid_program(path):
+def valid_program(path: str) -> str:
     lookup = shutil.which(path)
     if lookup is None:
         raise argparse.ArgumentTypeError(f"{path} is not a file or cannot be executed")
     return lookup
+
+
+def valid_gdb(path: Optional[str]) -> str:
+    if path:
+        return valid_program(path)
+
+    predefined_binaries = ["gdb-multiarch", "gdb"]
+    for binary in predefined_binaries:
+        if shutil.which(binary):
+            return binary
+
+    raise argparse.ArgumentTypeError(
+        f"Could not detect any gdb from {predefined_binaries} in PATH. Try passing custom path with a '-g' flag."
+    )
 
 
 def existing_directory(dir):
@@ -489,12 +503,17 @@ async def main():
         type=existing_directory,
         help="path/directory used as a Renode workspace",
     )
+
+    # NOTE: There are 3 possible cases with a -g flag.
+    # Flag is not present - skip using default_gdb, check for `/run/<program>` path in requests
+    # Flag is present, but without argument - check if one from predefined gdbs is present. If not - raise an error.
+    # Flag is present with argument - check if passed argument does exist. If not - raise an error.
     parser.add_argument(
         "-g",
         "--gdb",
-        const=default_gdb,
+        const="",
         nargs="?",
-        type=valid_program,
+        type=valid_gdb,
         help=f"path to gdb binary that will be used (defaults to {default_gdb})",
     )
     parser.add_argument(

@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "renode-ws-proxy"
-version = "1.3.0"
+version = "1.4.0"
 authors = [{name = "Antmicro Ltd.", email = "contact@antmicro.com"}]
 description = "Renode WebSocket Proxy for remote instances"
 dependencies = [
