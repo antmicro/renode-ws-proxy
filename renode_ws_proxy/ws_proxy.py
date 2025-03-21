@@ -11,6 +11,7 @@ import logging
 import subprocess
 import shutil
 import argparse
+from importlib import metadata
 from typing import cast, Optional, Iterable, TypeAlias
 from pathlib import Path
 
@@ -40,6 +41,7 @@ logger = logging.getLogger("ws_proxy.py")
 LOGLEVEL = logging.DEBUG
 renode_cwd = "/tmp/renode"
 default_gdb = "gdb-multiarch"
+version_str = f"renode-ws-proxy={metadata.version('renode-ws-proxy')} protocol={DATA_PROTOCOL_VERSION}"
 
 ProtocolTaskResult: TypeAlias = tuple[Optional[str], Iterable[asyncio.Task]]
 
@@ -523,11 +525,21 @@ async def main():
         default=21234,
         help="WebSocket server port (defaults to 21234)",
     )
+    parser.add_argument(
+        "-v",
+        "--version",
+        action="version",
+        version=version_str,
+        help="display renode-ws-proxy and data protocol version",
+    )
+
     args = parser.parse_args()
 
     renode_path = args.renode_binary
     renode_cwd = args.renode_execution_dir
     default_gdb = args.gdb
+
+    logger.info(f"Running {version_str}")
 
     renode_gui_disabled = get_bool_env("RENODE_PROXY_GUI_DISABLED")
     if renode_gui_disabled:
