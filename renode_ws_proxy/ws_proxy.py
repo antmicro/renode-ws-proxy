@@ -4,14 +4,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from os import environ, path
 import re
 import asyncio
 import logging
 import subprocess
-import shutil
 import argparse
-from importlib import metadata
 from typing import cast, Optional, Iterable, TypeAlias
 from pathlib import Path
 
@@ -21,6 +18,7 @@ import sys
 from sys import exit
 
 from renode_ws_proxy.telnet_proxy import TelnetProxy
+from renode_ws_proxy.argparser import parse_args, version_str
 from renode_ws_proxy.stream_proxy import StreamProxy
 from renode_ws_proxy.filesystem import FileSystemState
 from renode_ws_proxy.renode import RenodeState
@@ -40,8 +38,6 @@ logger = logging.getLogger("ws_proxy.py")
 
 LOGLEVEL = logging.DEBUG
 renode_cwd = "/tmp/renode"
-default_gdb = "gdb-multiarch"
-version_str = f"renode-ws-proxy={metadata.version('renode-ws-proxy')} protocol={DATA_PROTOCOL_VERSION}"
 
 ProtocolTaskResult: TypeAlias = tuple[Optional[str], Iterable[asyncio.Task]]
 
@@ -450,42 +446,7 @@ def truncate(message, length):
     return message[:length] + " [...]" if len(message) > length else message
 
 
-def valid_program(path: str) -> str:
-    lookup = shutil.which(path)
-    if lookup is None:
-        raise argparse.ArgumentTypeError(f"{path} is not a file or cannot be executed")
-    return lookup
-
-
-def valid_gdb(path: Optional[str]) -> str:
-    if path:
-        return valid_program(path)
-
-    predefined_binaries = ["gdb-multiarch", "gdb"]
-    for binary in predefined_binaries:
-        if shutil.which(binary):
-            return binary
-
-    raise argparse.ArgumentTypeError(
-        f"Could not detect any gdb from {predefined_binaries} in PATH. Try passing custom path with a '-g' flag."
-    )
-
-
-def existing_directory(dir):
-    if not path.isdir(dir):
-        raise argparse.ArgumentTypeError(f"{dir} is not a directory")
-    return dir
-
-
-def get_bool_env(name: str) -> bool:
-    variable = environ.get(name, None)
-    if not variable:
-        return False
-
-    return variable.lower() in ["1", "true", "yes"]
-
-
-async def main():
+async def main(args: argparse.Namespace):
     global \
         telnet_proxy, \
         stream_proxy, \
@@ -494,61 +455,16 @@ async def main():
         renode_cwd, \
         tasks_to_cancel_on_forced_exit
 
-    parser = argparse.ArgumentParser(
-        description="WebSocket based server for managing remote Renode instance"
-    )
-    parser.add_argument(
-        "renode_binary", type=valid_program, help="path to Renode portable binary"
-    )
-    parser.add_argument(
-        "renode_execution_dir",
-        type=existing_directory,
-        help="path/directory used as a Renode workspace",
-    )
-
-    # NOTE: There are 3 possible cases with a -g flag.
-    # Flag is not present - skip using default_gdb, check for `/run/<program>` path in requests
-    # Flag is present, but without argument - check if one from predefined gdbs is present. If not - raise an error.
-    # Flag is present with argument - check if passed argument does exist. If not - raise an error.
-    parser.add_argument(
-        "-g",
-        "--gdb",
-        const="",
-        nargs="?",
-        type=valid_gdb,
-        help=f"path to gdb binary that will be used (defaults to {default_gdb})",
-    )
-    parser.add_argument(
-        "-p",
-        "--port",
-        type=int,
-        default=21234,
-        help="WebSocket server port (defaults to 21234)",
-    )
-    parser.add_argument(
-        "-v",
-        "--version",
-        action="version",
-        version=version_str,
-        help="display renode-ws-proxy and data protocol version",
-    )
-
-    args = parser.parse_args()
-
     renode_path = args.renode_binary
     renode_cwd = args.renode_execution_dir
     default_gdb = args.gdb
 
     logger.info(f"Running {version_str}")
 
-    renode_gui_disabled = get_bool_env("RENODE_PROXY_GUI_DISABLED")
-    if renode_gui_disabled:
+    if args.disable_renode_gui:
         logger.info("RENODE_PROXY_GUI_DISABLED is set, Renode cannot be run with GUI")
 
-    renode_monitor_forwarding_disabled = get_bool_env(
-        "RENODE_PROXY_MONITOR_FORWARDING_DISABLED"
-    )
-    if renode_monitor_forwarding_disabled:
+    if args.disable_proxy_monitor_forwarding:
         logger.info(
             "RENODE_PROXY_MONITOR_FORWARDING_DISABLED is set, Renode won't write protocol based Monitor interactions to Monitor shell"
         )
@@ -557,8 +473,8 @@ async def main():
     stream_proxy = StreamProxy()
     renode_state = RenodeState(
         renode_path=renode_path,
-        gui_disabled=renode_gui_disabled,
-        monitor_forwarding_disabled=renode_monitor_forwarding_disabled,
+        gui_disabled=args.disable_renode_gui,
+        monitor_forwarding_disabled=args.disable_proxy_monitor_forwarding,
     )
 
     # XXX: the `max_size` parameter is a temporary workaround for uploading large `elf` files!
@@ -578,10 +494,12 @@ async def main():
 
 
 def run():
+    args = parse_args()
     loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
     for logger in loggers:
         logger.setLevel(LOGLEVEL)
-    asyncio.run(main())
+
+    asyncio.run(main(args))
 
 
 if __name__ == "__main__":
