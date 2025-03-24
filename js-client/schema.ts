@@ -152,3 +152,8 @@ export const ReplaceAnalyzersResponse = resp({
   data: z.object({}),
 });
 export type ReplaceAnalyzersResponse = z.infer<typeof ReplaceAnalyzersResponse>;
+
+export const FilterEventsResponse = resp({
+  data: z.object({}),
+});
+export type FilterEventsResponse = z.infer<typeof FilterEventsResponse>;

@@ -332,6 +332,16 @@ export class RenodeProxySession extends EventTarget {
     );
   }
 
+  public filterEvents(allowedEvents: string[]) {
+    return this.sendSessionRequestTyped(
+      {
+        action: 'filter-events',
+        payload: { args: allowedEvents },
+      },
+      s.FilterEventsResponse,
+    );
+  }
+
   public registerEventCallback(event: string, callback: EventCallback) {
     if (!this.eventHandlers[event]) {
       this.eventHandlers[event] = [];

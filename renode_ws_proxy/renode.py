@@ -36,6 +36,7 @@ class RenodeState:
         self.response_enqueued = asyncio.Event()
         self.event_queue = []
         self.response_queue = []
+        self.monitored_event_names = []
 
     async def read_loop(self) -> None:
         while await self.started_event.wait():
@@ -54,12 +55,19 @@ class RenodeState:
             assert self.renode and self.renode.stderr
             logger.debug(await self.renode.stderr.readline())
 
-    async def get_event(self) -> dict:
+    async def get_event(self) -> Optional[dict]:
         self.event_enqueued.clear()
         if len(self.event_queue) == 0:
             await self.event_enqueued.wait()
 
-        return self.event_queue.pop()["evt"]
+        event = self.event_queue.pop()["evt"]
+        if (
+            len(self.monitored_event_names) > 0
+            and event["event"] not in self.monitored_event_names
+        ):
+            return
+
+        return event
 
     async def _response(self) -> dict:
         self.response_enqueued.clear()
@@ -210,3 +218,6 @@ class RenodeState:
 
         logger.error(f"Failed to kill Renode PID: {self.renode.pid}")
         return False
+
+    def filter_events(self, events: list[str]) -> None:
+        self.monitored_event_names = events

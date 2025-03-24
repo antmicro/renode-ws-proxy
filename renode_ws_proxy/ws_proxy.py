@@ -63,10 +63,12 @@ async def parse_proxy_request(
 
                 async def prepare_event() -> ProtocolTaskResult:
                     logger.debug("Awaiting Renode event")
-                    event = await renode_state.get_event()
-                    return Event.from_renode_event(event).to_json(), {
-                        asyncio.Task(prepare_event())
-                    }
+                    event: Optional[str] = None
+
+                    if raw_event := await renode_state.get_event():
+                        event = Event.from_renode_event(raw_event).to_json()
+
+                    return event, {asyncio.Task(prepare_event())}
 
                 read_task = asyncio.Task(renode_state.read_loop())
                 log_task = asyncio.Task(renode_state.log_loop())
@@ -322,6 +324,17 @@ async def parse_proxy_request(
             result = filesystem_state.replace_analyzer(file)
             ret.data = result
             ret.status = _SUCCESS if result["success"] else _FAIL
+        elif mess.action == "filter-events":
+            if (
+                mess.payload is None
+                or "args" not in mess.payload
+                or not isinstance(mess.payload["args"], list)
+            ):
+                raise ValueError("Bad payload")
+
+            renode_state.filter_events(mess.payload["args"])
+            ret.status = _SUCCESS
+
         else:
             raise ValueError(f"Operation {mess.action} not supported")
 
