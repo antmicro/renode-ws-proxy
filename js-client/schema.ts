@@ -2,12 +2,12 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-import { version } from './version';
 import { z, ZodRawShape } from 'zod';
+import { semverRegex } from './version';
 
 export const BaseResponse = z.object({
-  version: z.literal(version),
   status: z.string(),
+  version: z.string().regex(semverRegex),
 });
 export const OkResponse = BaseResponse.extend({
   id: z.number(),
