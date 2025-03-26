@@ -124,6 +124,7 @@ class State:
 
             set_analyzer()
             EmulationManager.Instance.EmulationChanged += set_analyzer
+            EmulationManager.Instance.EmulationChanged += self.__signal_clear_command
 
         Emulator.BeforeExit += shell.Stop
 
@@ -167,6 +168,9 @@ class State:
 
     def __signal_renode_quitted(self):
         self.report_event(self, "renode-quitted")
+
+    def __signal_clear_command(self):
+        self.report_event(self, "clear-command")
 
     def _write_shell_command(self, command: str):
         if self.shell is None or self.monitor_forwarding_disabled:

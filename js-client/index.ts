@@ -13,6 +13,7 @@ import {
   UartOpenedCallback,
   UartOpenedArgs,
   RenodeQuitted,
+  ClearCommand,
 } from './events';
 import {
   GetSensorValue,
@@ -386,6 +387,14 @@ export class RenodeProxySession extends EventTarget {
     callback: EmptyEventCallback,
   ): boolean {
     return this.unregisterEventCallback(RenodeQuitted, callback);
+  }
+
+  public registerClearCommandCallback(callback: EmptyEventCallback): void {
+    this.registerEventCallback(ClearCommand, callback);
+  }
+
+  public unregisterClearCommandCallback(callback: EmptyEventCallback): boolean {
+    return this.unregisterEventCallback(ClearCommand, callback);
   }
 
   public dispose() {
