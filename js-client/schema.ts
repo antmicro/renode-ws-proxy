@@ -46,6 +46,12 @@ export type ExecMonitorResponse = z.infer<typeof ExecMonitorResponse>;
 export const GetUartsResponse = resp({
   data: z.string().array(),
 });
+export const GetButtonsResponse = resp({
+  data: z.string().array(),
+});
+export const GetLedsResponse = resp({
+  data: z.string().array(),
+});
 export type GetUartsResponse = z.infer<typeof GetUartsResponse>;
 
 export const GetMachinesResponse = resp({

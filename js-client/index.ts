@@ -14,6 +14,12 @@ import {
   UartOpenedArgs,
   RenodeQuitted,
   ClearCommand,
+  LedStateChanged,
+  LedStateChangedCallback,
+  LedStateChangedArgs,
+  ButtonStateChanged,
+  ButtonStateChangedCallback,
+  ButtonStateChangedArgs,
 } from './events';
 import {
   GetSensorValue,
@@ -112,6 +118,53 @@ export class RenodeProxySession extends EventTarget {
         },
       },
       s.GetUartsResponse,
+    );
+  }
+
+  public async getButtons(machine: string) {
+    return await this.sendSessionRequestTyped(
+      {
+        action: 'exec-renode',
+        payload: {
+          command: 'buttons',
+          args: { machine },
+        },
+      },
+      s.GetButtonsResponse,
+    );
+  }
+
+  public async getLeds(machine: string) {
+    return await this.sendSessionRequestTyped(
+      {
+        action: 'exec-renode',
+        payload: {
+          command: 'leds',
+          args: { machine },
+        },
+      },
+      s.GetLedsResponse,
+    );
+  }
+
+  public async setButtonValue(
+    machine: string,
+    peripheral: string,
+    value: boolean,
+  ): Promise<void> {
+    await this.sendSessionRequestTyped(
+      {
+        action: 'exec-renode',
+        payload: {
+          command: 'button-set',
+          args: {
+            machine: machine,
+            peripheral: peripheral,
+            value: value,
+          },
+        },
+      },
+      s.EmptyExecResponse,
     );
   }
 
@@ -395,6 +448,36 @@ export class RenodeProxySession extends EventTarget {
 
   public unregisterClearCommandCallback(callback: EmptyEventCallback): boolean {
     return this.unregisterEventCallback(ClearCommand, callback);
+  }
+
+  public registerLedStateChangedCallback(
+    callback: LedStateChangedCallback,
+  ): EventCallback {
+    const wrapped = (data: object) => {
+      callback(data as LedStateChangedArgs);
+    };
+    this.registerEventCallback(LedStateChanged, wrapped);
+    return wrapped;
+  }
+
+  public unregisterLedStateChangedCallback(callback: EventCallback): boolean {
+    return this.unregisterEventCallback(LedStateChanged, callback);
+  }
+
+  public registerButtonStateChangedCallback(
+    callback: ButtonStateChangedCallback,
+  ): EventCallback {
+    const wrapped = (data: object) => {
+      callback(data as ButtonStateChangedArgs);
+    };
+    this.registerEventCallback(ButtonStateChanged, wrapped);
+    return wrapped;
+  }
+
+  public unregisterButtonStateChangedCallback(
+    callback: EventCallback,
+  ): boolean {
+    return this.unregisterEventCallback(ButtonStateChanged, callback);
   }
 
   public dispose() {

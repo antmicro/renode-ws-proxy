@@ -6,7 +6,7 @@ import json
 from typing import Optional, Dict, Any
 from dataclasses import dataclass, field, asdict
 
-DATA_PROTOCOL_VERSION = "1.4.0"
+DATA_PROTOCOL_VERSION = "1.5.0"
 MAJOR, MINOR, PATCH = DATA_PROTOCOL_VERSION.split(".")
 
 _SUCCESS = "success"

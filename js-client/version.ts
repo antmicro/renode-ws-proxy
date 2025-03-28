@@ -1,4 +1,4 @@
-export const version: string = '1.4.0';
+export const version: string = '1.5.0';
 export const [major, minor, patch]: number[] = version
   .split('.')
   .map(s => parseInt(s));

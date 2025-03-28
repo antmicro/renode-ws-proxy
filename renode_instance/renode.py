@@ -15,7 +15,9 @@ from Antmicro.Renode.Peripherals.UART import IUART
 
 from renode_instance.state import State, Command
 from renode_instance.utils import get_full_name
+
 import renode_instance.sensors  # noqa: F401
+import renode_instance.gpio  # noqa: F401
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"

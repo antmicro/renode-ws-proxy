@@ -7,16 +7,24 @@ from threading import Thread
 import logging
 from functools import lru_cache
 
+from pyrenode3 import wrappers
 from pyrenode3.inits import XwtInit
-from pyrenode3.wrappers import Emulation, Monitor, Machine
+from pyrenode3.wrappers import Emulation, Monitor
 from pyrenode3.conversion import interface_to_class
 
 from System import ConsoleColor
 from Antmicro.Renode import Emulator
 from Antmicro.Renode.Analyzers import SocketUartAnalyzer
-from Antmicro.Renode.Core import EmulationManager
+from Antmicro.Renode.Core import (
+    EmulationManager,
+    IMachine,
+    PeripheralsChangedEventArgs,
+    Machine,
+)
+
 from Antmicro.Renode.Logging import Logger, NetworkBackend
 from Antmicro.Renode.Peripherals import (
+    IPeripheral,
     IPeripheralExtensions,
     IAnalyzableBackendAnalyzer,
 )
@@ -28,6 +36,8 @@ from AntShell import Prompt, Shell
 from AntShell.Terminal import IOProvider, NavigableTerminalEmulator
 
 from renode_instance.utils import csharp_is, get_full_name
+
+from Antmicro.Renode.Peripherals.Miscellaneous import Button, LED
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -41,8 +51,12 @@ class Command:
         self.commands = {}
         self.default_handler = None
 
-    def run(self, command: str, state: "State", message):
-        return self.commands.get(command, self.default_handler)(state, message)
+    def run(self, command: str, state: "State", message: object):
+        handler = self.commands.get(command, self.default_handler)
+        if not handler:
+            raise Exception("Command does not exist and default handler is not set")
+
+        return handler(state, message)
 
     def register(self, handler):
         self.commands[handler.__name__.replace("_", "-")] = handler
@@ -82,6 +96,44 @@ class State:
         logger.info(f"Renode logs available at port {logging_port}")
 
         self.__prepare_monitor(gui_enabled, logging_port - 1)
+
+        EmulationManager.Instance.EmulationChanged += self.__on_emulation_changed
+        self.__on_emulation_changed()
+
+    def __on_emulation_changed(self):
+        self.emulation.internal.MachineAdded += self.__on_machine_added
+
+    def __on_machine_added(self, machine: IMachine):
+        machine.PeripheralsChanged += self.__on_peripherals_changed
+
+    def __on_peripherals_changed(
+        self, machine: IMachine, args: PeripheralsChangedEventArgs
+    ):
+        logger.info(f"on peripherals changed {args.Operation}")
+        if args.Operation == PeripheralsChangedEventArgs.PeripheralChangeType.Addition:
+            self.__on_peripheral_added(machine, args.Peripheral)
+
+    def __on_peripheral_added(self, imachine: IMachine, peripheral: IPeripheral):
+        typed_peripheral: IPeripheral = interface_to_class(peripheral)
+        machineName = self.emulation.internal[imachine]
+        machine = wrappers.Machine(cast(Machine, imachine))
+
+        if isinstance(typed_peripheral, LED):
+            typed_peripheral.StateChanged += lambda _, value: self.report_event(
+                self,
+                "led-state-changed",
+                machineName=machineName,
+                name=get_full_name(peripheral, machine),
+                value=value,
+            )
+        elif isinstance(typed_peripheral, Button):
+            typed_peripheral.StateChanged += lambda value: self.report_event(
+                self,
+                "button-state-changed",
+                machineName=machineName,
+                name=get_full_name(peripheral, machine),
+                value=value,
+            )
 
     def quit(self):
         if self.shell:
@@ -159,8 +211,8 @@ class State:
             socket_analyzer = interface_to_class(analyzer)
             port = socket_analyzer.Port
             uart = socket_analyzer.UART
-            machine = IPeripheralExtensions.GetMachine(uart)
-            name = get_full_name(uart, Machine(machine))
+            machine = cast(Machine, IPeripheralExtensions.GetMachine(uart))
+            name = get_full_name(uart, wrappers.Machine(machine))
             machineName = self.emulation.internal[machine]
             self.report_event(
                 self, "uart-opened", port=port, name=name, machineName=machineName

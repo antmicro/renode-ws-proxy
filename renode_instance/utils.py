@@ -5,8 +5,7 @@
 from typing import Any, Type, Optional, Iterable
 import logging
 from clr import GetClrType
-
-from pyrenode3.wrappers import Machine
+from pyrenode3 import wrappers
 
 from Antmicro.Renode.Peripherals import IPeripheral
 
@@ -24,7 +23,7 @@ def csharp_as(T: Type, obj: Any) -> Optional[Any]:
     return T(obj) if csharp_is(T, obj) else None
 
 
-def get_full_name(peripheral: IPeripheral, machine: Machine) -> Optional[str]:
+def get_full_name(peripheral: IPeripheral, machine: wrappers.Machine) -> Optional[str]:
     ok, local_name = machine.internal.TryGetLocalName(peripheral)
     if not ok:
         return None
@@ -36,7 +35,7 @@ def get_full_name(peripheral: IPeripheral, machine: Machine) -> Optional[str]:
 
 
 def _get_full_name(
-    peripheral: IPeripheral, local_name: str, machine: Machine
+    peripheral: IPeripheral, local_name: str, machine: wrappers.Machine
 ) -> Iterable[str]:
     parents = machine.internal.GetParentPeripherals(peripheral)
 

@@ -12,3 +12,21 @@ export interface UartOpenedArgs {
   machineName: string;
 }
 export type UartOpenedCallback = (event: UartOpenedArgs) => void;
+
+export const LedStateChanged = 'led-state-changed';
+export interface LedStateChangedArgs {
+  machineName: string;
+  name: string;
+  value: boolean;
+}
+export type LedStateChangedCallback = (event: LedStateChangedArgs) => void;
+
+export const ButtonStateChanged = 'button-state-changed';
+export interface ButtonStateChangedArgs {
+  machineName: string;
+  name: string;
+  value: boolean;
+}
+export type ButtonStateChangedCallback = (
+  event: ButtonStateChangedArgs,
+) => void;
