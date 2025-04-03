@@ -554,7 +554,7 @@ export class RenodeProxySession extends EventTarget {
       req,
       timeout ?? this.defaultTimeout,
     );
-    console.log('[DEBUG] got answer from session', res);
+    console.debug('Got answer from session', res);
 
     const resParsed = await resParser.safeParseAsync(res);
 
@@ -587,7 +587,7 @@ export class RenodeProxySession extends EventTarget {
 
     return Promise.race([
       new Promise<object>((resolve, reject) => {
-        console.log('[DEBUG] sending message to session', msg);
+        console.debug('Sending message to session', msg);
 
         if (this.sessionSocket) {
           this.requestHandlers[id] = (res, err) => {
@@ -607,7 +607,7 @@ export class RenodeProxySession extends EventTarget {
         (_resolve, reject) =>
           (timeoutId = setTimeout(() => {
             delete this.requestHandlers[id];
-            console.log('[DEBUG] timeout for id', id);
+            console.debug('Timeout for id', id);
             reject(new Error(`Request reached timeout after ${timeout}ms`));
           }, timeout)),
       ),
