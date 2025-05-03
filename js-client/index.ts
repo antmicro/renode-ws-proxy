@@ -59,9 +59,13 @@ export class RenodeProxySession extends EventTarget {
     return new RenodeProxySession(socket, wsUri);
   }
 
+  public static fromWs(ws: WebSocket) {
+    return new RenodeProxySession(ws);
+  }
+
   private constructor(
     private sessionSocket: WebSocket,
-    private sessionUri: string,
+    private sessionUri?: string,
   ) {
     super();
     this.sessionSocket.addEventListener('message', ev =>
@@ -71,7 +75,7 @@ export class RenodeProxySession extends EventTarget {
     this.sessionSocket.addEventListener('close', () => this.onClose());
   }
 
-  public get sessionBase(): string {
+  public get sessionBase(): string | undefined {
     return this.sessionUri;
   }
 
