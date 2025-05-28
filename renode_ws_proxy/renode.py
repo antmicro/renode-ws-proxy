@@ -192,32 +192,33 @@ class RenodeState:
         return False
 
     async def kill(self) -> bool:
-        self.started_event.clear()
-        if not self.renode:
-            logger.warning(
-                "Requested to kill Renode, but subprocess has not been created"
-            )
-            return False
+        async with self.lock:
+            self.started_event.clear()
+            if not self.renode:
+                logger.warning(
+                    "Requested to kill Renode, but subprocess has not been created"
+                )
+                return False
 
-        try:
-            await asyncio.wait_for(self.execute("quit"), timeout=0.5)
+            try:
+                await asyncio.wait_for(self.execute("quit"), timeout=0.5)
+                if await self._wait_for_renode_termination(
+                    "Waiting for Renode instance to finish"
+                ):
+                    logger.info("Renode has been shutdown")
+                    return True
+            except asyncio.TimeoutError:
+                pass
+
+            self.renode.kill()
             if await self._wait_for_renode_termination(
-                "Waiting for Renode instance to finish"
+                "Waiting for Renode process to terminate"
             ):
-                logger.info("Renode has been shutdown")
+                logger.info("Renode has been killed")
                 return True
-        except asyncio.TimeoutError:
-            pass
 
-        self.renode.kill()
-        if await self._wait_for_renode_termination(
-            "Waiting for Renode process to terminate"
-        ):
-            logger.info("Renode has been killed")
-            return True
-
-        logger.error(f"Failed to kill Renode PID: {self.renode.pid}")
-        return False
+            logger.error(f"Failed to kill Renode PID: {self.renode.pid}")
+            return False
 
     def filter_events(self, events: list[str]) -> None:
         self.monitored_event_names = events
